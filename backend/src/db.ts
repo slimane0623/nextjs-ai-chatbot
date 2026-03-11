@@ -44,6 +44,19 @@ export type InventoryRow = {
   notes: string
 }
 
+export type InventoryMutationInput = {
+  medicineName: string
+  dosage: string
+  form: string
+  profileId: number | null
+  quantity: number
+  unit: string
+  expiryDate: string
+  criticalThreshold: number
+  location: string
+  notes: string
+}
+
 export type MovementRow = {
   id: number
   stockItemId: number
@@ -282,6 +295,131 @@ export function listInventory(search = '', status?: InventoryStatus) {
 
     return getInventoryStatus(item) === status
   })
+}
+
+export function getInventoryById(id: number) {
+  return db.prepare(`
+    SELECT
+      stock_items.id,
+      stock_items.medicine_id AS medicineId,
+      medicines.name AS medicineName,
+      medicines.dosage AS dosage,
+      medicines.form AS form,
+      stock_items.profile_id AS profileId,
+      profiles.name AS profileName,
+      stock_items.quantity,
+      stock_items.unit,
+      stock_items.expiry_date AS expiryDate,
+      stock_items.critical_threshold AS criticalThreshold,
+      stock_items.location,
+      stock_items.notes
+    FROM stock_items
+    JOIN medicines ON medicines.id = stock_items.medicine_id
+    LEFT JOIN profiles ON profiles.id = stock_items.profile_id
+    WHERE stock_items.id = ?
+  `).get(id) as InventoryRow | undefined
+}
+
+export function createInventory(input: InventoryMutationInput) {
+  const medicineResult = db.prepare(`
+    INSERT INTO medicines (name, dosage, form, active_substance, indications)
+    VALUES (?, ?, ?, '', '')
+  `).run(input.medicineName, input.dosage, input.form)
+
+  const medicineId = Number(medicineResult.lastInsertRowid)
+
+  const stockResult = db.prepare(`
+    INSERT INTO stock_items (
+      medicine_id,
+      profile_id,
+      quantity,
+      unit,
+      expiry_date,
+      critical_threshold,
+      location,
+      notes
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    medicineId,
+    input.profileId,
+    input.quantity,
+    input.unit,
+    input.expiryDate,
+    input.criticalThreshold,
+    input.location,
+    input.notes,
+  )
+
+  return getInventoryById(Number(stockResult.lastInsertRowid)) ?? null
+}
+
+export function updateInventory(id: number, input: InventoryMutationInput) {
+  const existing = db.prepare(`
+    SELECT medicine_id AS medicineId
+    FROM stock_items
+    WHERE id = ?
+  `).get(id) as { medicineId: number } | undefined
+
+  if (!existing) {
+    return null
+  }
+
+  db.prepare(`
+    UPDATE medicines
+    SET name = ?, dosage = ?, form = ?
+    WHERE id = ?
+  `).run(input.medicineName, input.dosage, input.form, existing.medicineId)
+
+  db.prepare(`
+    UPDATE stock_items
+    SET
+      profile_id = ?,
+      quantity = ?,
+      unit = ?,
+      expiry_date = ?,
+      critical_threshold = ?,
+      location = ?,
+      notes = ?
+    WHERE id = ?
+  `).run(
+    input.profileId,
+    input.quantity,
+    input.unit,
+    input.expiryDate,
+    input.criticalThreshold,
+    input.location,
+    input.notes,
+    id,
+  )
+
+  return getInventoryById(id) ?? null
+}
+
+export function deleteInventory(id: number) {
+  const existing = db.prepare(`
+    SELECT medicine_id AS medicineId
+    FROM stock_items
+    WHERE id = ?
+  `).get(id) as { medicineId: number } | undefined
+
+  if (!existing) {
+    return false
+  }
+
+  db.prepare('DELETE FROM stock_items WHERE id = ?').run(id)
+
+  const linkedStockCount = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM stock_items
+    WHERE medicine_id = ?
+  `).get(existing.medicineId) as { count: number }
+
+  if (linkedStockCount.count === 0) {
+    db.prepare('DELETE FROM medicines WHERE id = ?').run(existing.medicineId)
+  }
+
+  return true
 }
 
 export function listMovements() {
