@@ -72,11 +72,25 @@ type InventoryItem = {
   notes: string
 }
 
+type MovementType = 'prise' | 'ajout' | 'alerte'
+
+type MovementApiRow = {
+  id: number
+  stockItemId: number
+  profileId: number | null
+  profileName: string | null
+  medicineName: string
+  type: MovementType
+  quantityDelta: number
+  note: string
+  occurredAt: string
+}
+
 type Movement = {
   id: number
   medicine: string
   profile: string
-  type: 'prise' | 'ajout' | 'alerte'
+  type: MovementType
   quantityDelta: number
   occurredAt: string
 }
@@ -94,6 +108,17 @@ type ChatMessage = {
   content: string
 }
 
+type DashboardApiPayload = {
+  stats: {
+    totalMedicines: number
+    criticalCount: number
+    expiringCount: number
+    outOfStockCount: number
+  }
+  alerts: Alert[]
+  movements: MovementApiRow[]
+}
+
 const profiles: Profile[] = [
   { id: 1, name: 'Danil', role: 'Gestionnaire principal', birthDate: '1999-05-10', allergies: 'Aucune', notes: 'Profil principal', medicines: 12 },
   { id: 2, name: 'Slim', role: 'Patient chronique', birthDate: '2000-02-14', allergies: 'Penicilline', notes: 'Suivi quotidien', medicines: 5 },
@@ -106,19 +131,6 @@ const inventory: InventoryItem[] = [
   { id: 2, name: 'Metformine', dosage: '500 mg', form: 'Comprime', profileId: 2, profile: 'Slim', quantity: 8, unit: 'comprimes', expiryDate: '2026-03-29', threshold: 5, location: 'Salon', notes: 'Renouvellement proche' },
   { id: 3, name: 'Levothyrox', dosage: '75 ug', form: 'Comprime', profileId: 3, profile: 'Mamie Jeanne', quantity: 0, unit: 'comprimes', expiryDate: '2026-04-06', threshold: 2, location: 'Boite senior', notes: 'Rupture' },
   { id: 4, name: 'Amoxicilline', dosage: '500 mg', form: 'Gelule', profileId: 1, profile: 'Danil', quantity: 10, unit: 'gelules', expiryDate: '2026-03-20', threshold: 3, location: 'Salle de bain', notes: 'Traitement en cours' },
-]
-
-const movements: Movement[] = [
-  { id: 1, medicine: 'Doliprane 1000 mg', profile: 'Danil', type: 'prise', quantityDelta: -2, occurredAt: '10 mars 20:30' },
-  { id: 2, medicine: 'Metformine 500 mg', profile: 'Slim', type: 'prise', quantityDelta: -1, occurredAt: '10 mars 12:00' },
-  { id: 3, medicine: 'Doliprane 1000 mg', profile: 'Danil', type: 'ajout', quantityDelta: 16, occurredAt: '09 mars 18:15' },
-  { id: 4, medicine: 'Levothyrox 75 ug', profile: 'Mamie Jeanne', type: 'alerte', quantityDelta: 0, occurredAt: '09 mars 08:00' },
-]
-
-const alerts: Alert[] = [
-  { id: 1, severity: 'warning', title: 'Metformine bientot critique', description: '8 comprimes restants pour Slim' },
-  { id: 2, severity: 'warning', title: 'Amoxicilline proche peremption', description: 'Peremption prevue le 2026-03-20' },
-  { id: 3, severity: 'critical', title: 'Levothyrox en rupture', description: 'Aucun stock disponible pour Mamie Jeanne' },
 ]
 
 const navigation = [
@@ -228,6 +240,32 @@ function toInventoryForm(item: InventoryItem): InventoryForm {
   }
 }
 
+function formatOccurredAt(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function mapMovementApiRow(row: MovementApiRow): Movement {
+  return {
+    id: row.id,
+    medicine: row.medicineName,
+    profile: row.profileName ?? 'Foyer',
+    type: row.type,
+    quantityDelta: row.quantityDelta,
+    occurredAt: formatOccurredAt(row.occurredAt),
+  }
+}
+
 function getEmptyInventoryForm(): InventoryForm {
   return {
     name: '',
@@ -316,12 +354,48 @@ function Layout() {
 }
 
 function DashboardPage() {
-  const stats = [
-    { label: 'Medicaments', value: 8 },
-    { label: 'Stock critique', value: inventory.filter((item) => getStatus(item) === 'critical').length },
-    { label: 'Bientot perimes', value: inventory.filter((item) => getStatus(item) === 'expiring').length },
-    { label: 'Ruptures', value: inventory.filter((item) => getStatus(item) === 'out').length },
-  ]
+  const [stats, setStats] = useState([
+    { label: 'Medicaments', value: 0 },
+    { label: 'Stock critique', value: 0 },
+    { label: 'Bientot perimes', value: 0 },
+    { label: 'Ruptures', value: 0 },
+  ])
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [recentMovements, setRecentMovements] = useState<Movement[]>([])
+  const [chartItems, setChartItems] = useState<InventoryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  async function loadDashboard() {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [dashboard, inventoryRows] = await Promise.all([
+        fetchJson<DashboardApiPayload>('/api/dashboard'),
+        fetchJson<InventoryApiRow[]>('/api/inventory'),
+      ])
+
+      setStats([
+        { label: 'Medicaments', value: dashboard.stats.totalMedicines },
+        { label: 'Stock critique', value: dashboard.stats.criticalCount },
+        { label: 'Bientot perimes', value: dashboard.stats.expiringCount },
+        { label: 'Ruptures', value: dashboard.stats.outOfStockCount },
+      ])
+      setAlerts(dashboard.alerts)
+      setRecentMovements(dashboard.movements.map(mapMovementApiRow))
+      setChartItems(inventoryRows.map(mapInventoryApiRow))
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
+      setError(`Impossible de charger le dashboard. ${message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadDashboard()
+  }, [])
 
   return (
     <section className="page-grid">
@@ -349,6 +423,7 @@ function DashboardPage() {
               <span className="pill">{alert.description}</span>
             </div>
           ))}
+          {!loading && alerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
         </div>
       </article>
 
@@ -362,7 +437,7 @@ function DashboardPage() {
           </div>
           <div className="chart-wrap">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={inventory}>
+              <BarChart data={chartItems}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -396,7 +471,7 @@ function DashboardPage() {
           </div>
         </div>
         <div className="stack-list">
-          {movements.slice(0, 3).map((movement) => (
+          {recentMovements.slice(0, 3).map((movement) => (
             <div key={movement.id} className="movement-row">
               <div>
                 <strong>{movement.medicine}</strong>
@@ -408,7 +483,9 @@ function DashboardPage() {
               </div>
             </div>
           ))}
+          {!loading && recentMovements.length === 0 ? <p className="muted">Aucun mouvement recent.</p> : null}
         </div>
+        {error ? <p className="error-text">{error}</p> : null}
       </article>
     </section>
   )
@@ -1037,14 +1114,55 @@ function ProfilesPage() {
 }
 
 function HistoryPage() {
-  const [type, setType] = useState('all')
+  const [type, setType] = useState<'all' | MovementType>('all')
   const [profileFilter, setProfileFilter] = useState('all')
+  const [profileOptions, setProfileOptions] = useState<Array<{ id: number, name: string }>>([])
+  const [historyRows, setHistoryRows] = useState<Movement[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const filteredMovements = movements.filter((movement) => {
-    const matchesType = type === 'all' ? true : movement.type === type
-    const matchesProfile = profileFilter === 'all' ? true : movement.profile === profileFilter
-    return matchesType && matchesProfile
-  })
+  useEffect(() => {
+    async function loadProfileOptions() {
+      try {
+        const rows = await fetchJson<ProfileApiRow[]>('/api/profiles')
+        setProfileOptions(rows.map((row) => ({ id: row.id, name: row.name })))
+      } catch {
+        // Keep history usable even if profile list cannot be loaded.
+      }
+    }
+
+    void loadProfileOptions()
+  }, [])
+
+  useEffect(() => {
+    async function loadHistory() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const query = new URLSearchParams()
+
+        if (type !== 'all') {
+          query.set('type', type)
+        }
+
+        if (profileFilter !== 'all') {
+          query.set('profileId', profileFilter)
+        }
+
+        const suffix = query.size > 0 ? `?${query.toString()}` : ''
+        const rows = await fetchJson<MovementApiRow[]>(`/api/history${suffix}`)
+        setHistoryRows(rows.map(mapMovementApiRow))
+      } catch (caughtError) {
+        const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
+        setError(`Impossible de charger l historique. ${message}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadHistory()
+  }, [type, profileFilter])
 
   return (
     <section className="page-grid">
@@ -1060,7 +1178,7 @@ function HistoryPage() {
           <select
             className="select-input"
             value={type}
-            onChange={(event) => setType(event.target.value)}
+            onChange={(event) => setType(event.target.value as 'all' | MovementType)}
             aria-label="Filtrer l historique par type"
           >
             <option value="all">Tous les mouvements</option>
@@ -1075,14 +1193,14 @@ function HistoryPage() {
             aria-label="Filtrer l historique par profil"
           >
             <option value="all">Tous les profils</option>
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.name}>{profile.name}</option>
+            {profileOptions.map((profile) => (
+              <option key={profile.id} value={String(profile.id)}>{profile.name}</option>
             ))}
           </select>
         </div>
 
         <div className="stack-list">
-          {filteredMovements.map((movement) => (
+          {historyRows.map((movement) => (
             <div key={movement.id} className="movement-row movement-row-large">
               <div>
                 <strong>{movement.medicine}</strong>
@@ -1094,7 +1212,10 @@ function HistoryPage() {
               </div>
             </div>
           ))}
+          {!loading && historyRows.length === 0 ? <p className="muted">Aucun mouvement pour ces filtres.</p> : null}
         </div>
+        {loading ? <p>Chargement de l historique...</p> : null}
+        {error ? <p className="error-text">{error}</p> : null}
       </article>
     </section>
   )

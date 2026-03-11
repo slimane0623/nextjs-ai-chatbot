@@ -3,6 +3,7 @@ import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 export type InventoryStatus = 'ok' | 'critical' | 'expiring' | 'out'
+export type MovementType = 'prise' | 'ajout' | 'alerte'
 
 export type DashboardStats = {
   totalMedicines: number
@@ -63,10 +64,15 @@ export type MovementRow = {
   profileId: number | null
   profileName: string | null
   medicineName: string
-  type: string
+  type: MovementType
   quantityDelta: number
   note: string
   occurredAt: string
+}
+
+export type MovementFilters = {
+  type?: MovementType
+  profileId?: number
 }
 
 export type AlertRow = {
@@ -422,36 +428,44 @@ export function deleteInventory(id: number) {
   return true
 }
 
-export function listMovements() {
+export function listMovements(filters: MovementFilters = {}) {
+  const conditions: string[] = []
+  const params: Array<number | string> = []
+
+  if (filters.type) {
+    conditions.push('movements.type = ?')
+    params.push(filters.type)
+  }
+
+  if (typeof filters.profileId === 'number') {
+    conditions.push('movements.profile_id = ?')
+    params.push(filters.profileId)
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
+
   return db.prepare(`
     SELECT
       movements.id,
       movements.stock_item_id AS stockItemId,
       movements.profile_id AS profileId,
       profiles.name AS profileName,
-      medicines.name AS medicineName,
+      COALESCE(medicines.name, 'Medicament supprime') AS medicineName,
       movements.type,
       movements.quantity_delta AS quantityDelta,
       movements.note,
       movements.occurred_at AS occurredAt
     FROM movements
-    JOIN stock_items ON stock_items.id = movements.stock_item_id
-    JOIN medicines ON medicines.id = stock_items.medicine_id
+    LEFT JOIN stock_items ON stock_items.id = movements.stock_item_id
+    LEFT JOIN medicines ON medicines.id = stock_items.medicine_id
     LEFT JOIN profiles ON profiles.id = movements.profile_id
+    ${whereClause}
     ORDER BY movements.occurred_at DESC
-  `).all() as MovementRow[]
+  `).all(...params) as MovementRow[]
 }
 
-export function getDashboard() {
+export function listAlerts() {
   const inventory = listInventory()
-  const movements = listMovements().slice(0, 5)
-
-  const stats: DashboardStats = {
-    totalMedicines: inventory.length,
-    criticalCount: inventory.filter((item) => getInventoryStatus(item) === 'critical').length,
-    expiringCount: inventory.filter((item) => getInventoryStatus(item) === 'expiring').length,
-    outOfStockCount: inventory.filter((item) => getInventoryStatus(item) === 'out').length,
-  }
 
   const alerts = inventory.flatMap<AlertRow>((item) => {
     const status = getInventoryStatus(item)
@@ -486,9 +500,29 @@ export function getDashboard() {
     return []
   })
 
+  return alerts.sort((left, right) => {
+    if (left.severity === right.severity) {
+      return left.title.localeCompare(right.title)
+    }
+
+    return left.severity === 'critical' ? -1 : 1
+  })
+}
+
+export function getDashboard() {
+  const inventory = listInventory()
+  const movements = listMovements().slice(0, 5)
+
+  const stats: DashboardStats = {
+    totalMedicines: inventory.length,
+    criticalCount: inventory.filter((item) => getInventoryStatus(item) === 'critical').length,
+    expiringCount: inventory.filter((item) => getInventoryStatus(item) === 'expiring').length,
+    outOfStockCount: inventory.filter((item) => getInventoryStatus(item) === 'out').length,
+  }
+
   return {
     stats,
-    alerts,
+    alerts: listAlerts(),
     movements,
   }
 }
