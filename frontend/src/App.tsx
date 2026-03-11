@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 
 type Profile = {
   id: number
@@ -121,11 +121,11 @@ const alerts: Alert[] = [
 ]
 
 const navigation = [
-  { to: '/', label: 'Dashboard', shortLabel: 'Home' },
-  { to: '/inventaire', label: 'Inventaire', shortLabel: 'Stock' },
+  { to: '/', label: 'Tableau de bord', shortLabel: 'Dashboard' },
+  { to: '/inventaire', label: 'Inventaire', shortLabel: 'Inventaire' },
   { to: '/profils', label: 'Profils', shortLabel: 'Profils' },
-  { to: '/historique', label: 'Historique', shortLabel: 'Logs' },
-  { to: '/assistant', label: 'Assistant IA', shortLabel: 'IA' },
+  { to: '/historique', label: 'Historique', shortLabel: 'Historique' },
+  { to: '/assistant', label: 'Assistant IA', shortLabel: 'Assistant' },
 ]
 
 const profileRoles = [
@@ -233,6 +233,17 @@ function mapMovement(row: MovementApiRow): Movement {
 }
 
 function Layout() {
+  const location = useLocation()
+  const pageTitleByPath: Record<string, string> = {
+    '/': 'Tableau de bord',
+    '/inventaire': 'Inventaire',
+    '/profils': 'Profils',
+    '/historique': 'Historique',
+    '/assistant': 'Assistant IA',
+    '/gestion': 'Gestion',
+  }
+  const pageTitle = pageTitleByPath[location.pathname] ?? 'PharmaStock'
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -266,7 +277,7 @@ function Layout() {
         <header className="topbar">
           <div>
             <p className="eyebrow">Prototype de travail</p>
-            <h2>Tableau de bord</h2>
+            <h2>{pageTitle}</h2>
             <p className="muted">5 mars 2026</p>
           </div>
           <div className="topbar-actions">
