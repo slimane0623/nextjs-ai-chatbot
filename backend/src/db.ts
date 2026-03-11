@@ -239,6 +239,7 @@ export function updateProfile(id: number, input: ProfileMutationInput) {
 }
 
 export function deleteProfile(id: number) {
+  db.prepare('UPDATE movements SET profile_id = NULL WHERE profile_id = ?').run(id)
   db.prepare('UPDATE stock_items SET profile_id = NULL WHERE profile_id = ?').run(id)
   const result = db.prepare('DELETE FROM profiles WHERE id = ?').run(id)
   return result.changes > 0
