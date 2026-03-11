@@ -512,6 +512,7 @@ export function deleteInventory(id: number) {
   }
 
   return true
+}
 
 export function listMovements() {
   return db.prepare(`
