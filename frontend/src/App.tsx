@@ -1,4 +1,4 @@
-import { useEffect, useState, useTransition, type FormEvent } from 'react'
+﻿import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import {
   Bar,
   BarChart,
@@ -202,20 +202,13 @@ function getStatusLabel(status: string) {
   }
 }
 
-<<<<<<< HEAD
 function mapInventory(row: InventoryApiRow): InventoryItem {
-=======
-function mapInventoryApiRow(row: InventoryApiRow): InventoryItem {
->>>>>>> origin/sprint-1-bdd-crud-roles
   return {
     id: row.id,
     name: row.medicineName,
     dosage: row.dosage,
     form: row.form,
-<<<<<<< HEAD
-=======
     profileId: row.profileId,
->>>>>>> origin/sprint-1-bdd-crud-roles
     profile: row.profileName ?? 'Foyer',
     quantity: row.quantity,
     unit: row.unit,
@@ -226,7 +219,6 @@ function mapInventoryApiRow(row: InventoryApiRow): InventoryItem {
   }
 }
 
-<<<<<<< HEAD
 function mapMovement(row: MovementApiRow): Movement {
   return {
     id: row.id,
@@ -240,7 +232,9 @@ function mapMovement(row: MovementApiRow): Movement {
       hour: '2-digit',
       minute: '2-digit',
     }),
-=======
+  }
+}
+
 function toInventoryForm(item: InventoryItem): InventoryForm {
   return {
     name: item.name,
@@ -268,7 +262,6 @@ function getEmptyInventoryForm(): InventoryForm {
     threshold: '1',
     location: '',
     notes: '',
->>>>>>> origin/sprint-1-bdd-crud-roles
   }
 }
 
@@ -287,20 +280,9 @@ function Layout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-<<<<<<< HEAD
         <div>
           <p className="eyebrow">PharmaStock</p>
           <h1>Gestion des medicaments familiaux</h1>
-=======
-        <div className="sidebar-header">
-          <div className="logo-container">
-            <img src="/logo-medistock.svg" alt="PharmaStock" className="logo" />
-            <div>
-              <p className="eyebrow">PharmaStock</p>
-              <h1>Gestion des medicaments familiaux</h1>
-            </div>
-          </div>
->>>>>>> origin/sprint-1-bdd-crud-roles
           <p className="muted">Suivi simple et securise du stock, des profils et des alertes.</p>
         </div>
 
@@ -327,12 +309,8 @@ function Layout() {
       <main className="main-panel">
         <header className="topbar">
           <div>
-<<<<<<< HEAD
             <p className="eyebrow">Prototype de travail</p>
             <h2>{pageTitle}</h2>
-=======
-            <h2>Tableau de bord</h2>
->>>>>>> origin/sprint-1-bdd-crud-roles
             <p className="muted">5 mars 2026</p>
           </div>
           <div className="topbar-actions">
@@ -389,95 +367,6 @@ function DashboardPage() {
       <article className="card alerts-board">
         <div className="section-heading">
           <div>
-<<<<<<< HEAD
-            <p className="eyebrow">Dashboard</p>
-            <h3>Niveaux de stock</h3>
-            <p className="muted">Vue de pilotage pour le gestionnaire principal et les aidants familiaux.</p>
-          </div>
-        </div>
-        <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={inventory}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Alertes</p>
-            <h3>Alertes actives</h3>
-=======
-            <p className="eyebrow">Alertes actives</p>
-            <h3>Suivi prioritaire</h3>
->>>>>>> origin/sprint-1-bdd-crud-roles
-          </div>
-        </div>
-        <div className="stack-list">
-          {alerts.map((alert) => (
-            <div key={alert.id} className={`alert-row alert-${alert.severity}`}>
-              <strong>{alert.title}</strong>
-              <span className="pill">{alert.description}</span>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <div className="dashboard-lower">
-        <article className="card chart-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Niveaux de stock</p>
-              <h3>Quantites actuelles</h3>
-            </div>
-          </div>
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={inventory}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="card quick-actions">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Actions rapides</p>
-              <h3>Raccourcis</h3>
-            </div>
-          </div>
-          <div className="stack-list">
-            <button className="primary-button" type="button">Ajouter un medicament</button>
-            <button className="secondary-button" type="button">J ai pris mon medicament</button>
-            <button className="secondary-button" type="button">Voir tout le stock</button>
-          </div>
-        </article>
-      </div>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Derniers mouvements</p>
-            <h3>Historique recent</h3>
-          </div>
-        </div>
-        <div className="stack-list">
-<<<<<<< HEAD
-          {movements.slice(0, 5).map((movement) => (
-=======
-          {movements.slice(0, 3).map((movement) => (
->>>>>>> origin/sprint-1-bdd-crud-roles
             <div key={movement.id} className="movement-row">
               <div>
                 <strong>{movement.medicine}</strong>
@@ -500,258 +389,9 @@ function InventoryPage() {
   const [profileOptions, setProfileOptions] = useState<Array<{ id: number, name: string }>>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
-<<<<<<< HEAD
-  const [inventoryRows, setInventoryRows] = useState<InventoryItem[]>([])
-  const [selectedId, setSelectedId] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [actionPending, setActionPending] = useState(false)
-
-  async function loadInventory() {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const params = new URLSearchParams()
-
-      if (search.trim()) {
-        params.set('search', search.trim())
-      }
-
-      if (status !== 'all') {
-        params.set('status', status)
-      }
-
-      const query = params.toString()
-      const rows = await fetchJson<InventoryApiRow[]>(`/api/inventory${query ? `?${query}` : ''}`)
-      const mapped = rows.map(mapInventory)
-
-      setInventoryRows(mapped)
-      setSelectedId((current) => {
-        const hasCurrent = mapped.some((item) => item.id === current)
-        return hasCurrent ? current : (mapped[0]?.id ?? 0)
-      })
-    } catch {
-      setError('Impossible de charger l inventaire. Verifie que le backend tourne sur le port 4000.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadInventory()
-  }, [search, status])
-
-  const selectedItem = inventoryRows.find((item) => item.id === selectedId) ?? inventoryRows[0]
-
-  async function handleQuickAction(type: 'prise' | 'ajout') {
-=======
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [mode, setMode] = useState<'create' | 'edit'>('create')
-  const [form, setForm] = useState<InventoryForm>(getEmptyInventoryForm())
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function loadInventory(preferredId?: number | null) {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const [inventoryRows, profileRows] = await Promise.all([
-        fetchJson<InventoryApiRow[]>('/api/inventory'),
-        fetchJson<ProfileApiRow[]>('/api/profiles'),
-      ])
-
-      const mappedItems = inventoryRows.map(mapInventoryApiRow)
-
-      setItems(mappedItems)
-      setProfileOptions(profileRows.map((row) => ({ id: row.id, name: row.name })))
-
-      if (mappedItems.length === 0) {
-        setSelectedId(null)
-        setMode('create')
-        setForm(getEmptyInventoryForm())
-        return
-      }
-
-      const candidateId = preferredId ?? selectedId
-      const hasCandidate = candidateId !== null && mappedItems.some((item) => item.id === candidateId)
-      const nextId = hasCandidate ? candidateId : mappedItems[0].id
-
-      setSelectedId(nextId)
-
-      if (mode === 'edit') {
-        const selected = mappedItems.find((item) => item.id === nextId)
-
-        if (selected) {
-          setForm(toInventoryForm(selected))
-        }
-      }
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
-      setError(`Impossible de charger l inventaire. ${message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadInventory()
-  }, [])
-
-  const filteredItems = items.filter((item) => {
-    const haystack = `${item.name} ${item.dosage} ${item.profile}`.toLowerCase()
-    const matchesSearch = haystack.includes(search.toLowerCase())
-    const matchesStatus = status === 'all' ? true : getStatus(item) === status
-    return matchesSearch && matchesStatus
-  })
-
-  const selectedItem = items.find((item) => item.id === selectedId) ?? null
-
-  function startCreate() {
-    setMode('create')
-    setSelectedId(null)
-    setForm(getEmptyInventoryForm())
-    setError(null)
-  }
-
-  function startEdit(item: InventoryItem) {
-    setMode('edit')
-    setSelectedId(item.id)
-    setForm(toInventoryForm(item))
-    setError(null)
-  }
-
-  function setField(field: keyof InventoryForm, value: string) {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const quantity = Number(form.quantity)
-    const threshold = Number(form.threshold)
-
-    if (!Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(threshold) || threshold < 0) {
-      setError('Quantite et seuil critique doivent etre des nombres entiers >= 0.')
-      return
-    }
-
-    const payload = {
-      medicineName: form.name.trim(),
-      dosage: form.dosage.trim(),
-      form: form.form.trim(),
-      profileId: form.profileId ? Number(form.profileId) : null,
-      quantity,
-      unit: form.unit.trim(),
-      expiryDate: form.expiryDate,
-      criticalThreshold: threshold,
-      location: form.location.trim(),
-      notes: form.notes.trim(),
-    }
-
-    if (!payload.medicineName || !payload.dosage || !payload.form || !payload.unit || !payload.expiryDate || !payload.location) {
-      setError('Tous les champs obligatoires doivent etre remplis.')
-      return
-    }
-
-    setSaving(true)
-    setError(null)
-
-    try {
-      const isCreate = mode === 'create' || selectedItem === null
-      const path = isCreate ? '/api/inventory' : `/api/inventory/${selectedItem.id}`
-      const method = isCreate ? 'POST' : 'PUT'
-
-      const saved = await fetchJson<InventoryApiRow>(path, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      setMode('edit')
-      await loadInventory(saved.id)
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
-      setError(`Echec de sauvegarde inventaire. ${message}`)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleDelete() {
->>>>>>> origin/sprint-1-bdd-crud-roles
     if (!selectedItem) {
       return
     }
-
-<<<<<<< HEAD
-    const quantityInput = window.prompt(
-      type === 'prise' ? 'Quantite prise ?' : 'Quantite ajoutee ?',
-      '1',
-    )
-
-    if (quantityInput === null) {
-      return
-    }
-
-    const quantity = Number.parseInt(quantityInput, 10)
-
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      setError('Saisis une quantite entiere positive.')
-      return
-    }
-
-    setActionPending(true)
-    setError(null)
-
-    try {
-      await fetchJson<InventoryActionResponse>(`/api/inventory/${selectedItem.id}/actions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type,
-          quantity,
-          note: type === 'prise' ? 'Prise enregistree depuis Inventaire' : 'Ajout enregistre depuis Inventaire',
-        }),
-      })
-
-      await loadInventory()
-    } catch {
-      setError(type === 'prise'
-        ? 'Echec de la prise (stock insuffisant ou item introuvable).'
-        : 'Echec de l ajout de stock.')
-    } finally {
-      setActionPending(false)
-    }
-  }
-=======
-    if (!globalThis.confirm(`Supprimer ${selectedItem.name} de l inventaire ?`)) {
-      return
-    }
-
-    setSaving(true)
-    setError(null)
-
-    try {
-      await fetchJson<void>(`/api/inventory/${selectedItem.id}`, { method: 'DELETE' })
-      startCreate()
-      await loadInventory()
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
-      setError(`Echec de suppression inventaire. ${message}`)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  let submitLabel = mode === 'create' ? 'Ajouter medicament' : 'Enregistrer modification'
-
-  if (saving) {
-    submitLabel = 'Sauvegarde...'
-  }
->>>>>>> origin/sprint-1-bdd-crud-roles
 
   return (
     <section className="page-grid inventory-layout">
@@ -790,13 +430,6 @@ function InventoryPage() {
           </select>
         </div>
 
-<<<<<<< HEAD
-        {loading ? <p>Chargement de l inventaire...</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
-=======
-        {loading ? <p className="muted">Chargement inventaire...</p> : null}
->>>>>>> origin/sprint-1-bdd-crud-roles
-
         <div className="inventory-grid">
           {inventoryRows.map((item) => {
             const statusLabel = getStatusLabel(getStatus(item))
@@ -810,12 +443,12 @@ function InventoryPage() {
                 <div className="inventory-card-head">
                   <div>
                     <strong>{item.name}</strong>
-                    <p className="muted">{item.dosage} · {item.profile}</p>
+                    <p className="muted">{item.dosage} Â· {item.profile}</p>
                   </div>
                   <span className="pill">{statusLabel}</span>
                 </div>
                 <progress className="progress-meter" value={item.quantity} max={Math.max(item.threshold * 4, 1)} />
-                <p className="muted">{item.quantity} {item.unit} · Exp. {item.expiryDate}</p>
+                <p className="muted">{item.quantity} {item.unit} Â· Exp. {item.expiryDate}</p>
               </button>
             )
           })}
@@ -890,21 +523,6 @@ function InventoryPage() {
           </label>
 
           <div className="button-row">
-<<<<<<< HEAD
-            <button className="primary-button" type="button" onClick={() => void handleQuickAction('prise')} disabled={actionPending}>
-              Enregistrer une prise
-            </button>
-            <button className="secondary-button" type="button" onClick={() => void handleQuickAction('ajout')} disabled={actionPending}>
-              Ajouter du stock
-            </button>
-=======
-            <button className="primary-button" type="submit" disabled={saving}>{submitLabel}</button>
-            {mode === 'edit' && selectedItem ? (
-              <button className="danger-button" type="button" onClick={() => void handleDelete()} disabled={saving}>
-                Supprimer
-              </button>
-            ) : null}
->>>>>>> origin/sprint-1-bdd-crud-roles
           </div>
         </form>
       </article>
@@ -1053,14 +671,6 @@ function ProfilesPage() {
       }
 
       resetForm()
-<<<<<<< HEAD
-    } catch {
-      setError('Echec de sauvegarde du profil.')
-=======
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Erreur inconnue'
-      setError(`Echec de sauvegarde du profil. ${message}`)
->>>>>>> origin/sprint-1-bdd-crud-roles
     } finally {
       setSaving(false)
     }
@@ -1304,7 +914,7 @@ function HistoryPage() {
             <div key={movement.id} className="movement-row movement-row-large">
               <div>
                 <strong>{movement.medicine}</strong>
-                <p className="muted">{movement.profile} · {movement.type}</p>
+                <p className="muted">{movement.profile} Â· {movement.type}</p>
               </div>
               <div className="align-right">
                 <strong>{movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}</strong>
@@ -1414,3 +1024,4 @@ function AssistantPage() {
 export default function App() {
   return <Layout />
 }
+
