@@ -172,13 +172,13 @@ function Layout() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-container">
-            <img src="/logo-medistock.svg" alt="MediStock AI" className="logo" />
+            <img src="/logo-medistock.svg" alt="PharmaStock" className="logo" />
             <div>
-              <p className="eyebrow">MediStock AI</p>
-              <h1>Pharmacie familiale intelligente</h1>
+              <p className="eyebrow">PharmaStock</p>
+              <h1>Gestion des medicaments familiaux</h1>
             </div>
           </div>
-          <p className="muted">Frontend React de demarrage, aligne sur la maquette cible.</p>
+          <p className="muted">Suivi simple et securise du stock, des profils et des alertes.</p>
         </div>
 
         <nav className="nav-list" aria-label="Navigation principale">
