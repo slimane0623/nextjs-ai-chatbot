@@ -1,0 +1,36 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="#f0f9f0" stroke="#1b7d1b" stroke-width="2"/>
+  
+  <!-- Central cross -->
+  <g id="cross">
+    <!-- Vertical bar -->
+    <rect x="170" y="100" width="60" height="200" fill="#1b7d1b" rx="8"/>
+    <!-- Horizontal bar -->
+    <rect x="100" y="170" width="200" height="60" fill="#1b7d1b" rx="8"/>
+  </g>
+  
+  <!-- Decorative pills around cross -->
+  <g id="pills" stroke="#2da52d" stroke-width="3" fill="none">
+    <!-- Top left -->
+    <ellipse cx="110" cy="110" rx="25" ry="35" transform="rotate(-35 110 110)"/>
+    <!-- Top right -->
+    <ellipse cx="290" cy="110" rx="25" ry="35" transform="rotate(35 290 110)"/>
+    <!-- Bottom left -->
+    <ellipse cx="110" cy="290" rx="25" ry="35" transform="rotate(35 110 290)"/>
+    <!-- Bottom right -->
+    <ellipse cx="290" cy="290" rx="25" ry="35" transform="rotate(-35 290 290)"/>
+  </g>
+  
+  <!-- Accent circles -->
+  <g id="accents" fill="#2da52d" opacity="0.6">
+    <circle cx="85" cy="140" r="12"/>
+    <circle cx="315" cy="140" r="12"/>
+    <circle cx="140" cy="85" r="12"/>
+    <circle cx="260" cy="85" r="12"/>
+    <circle cx="140" cy="315" r="12"/>
+    <circle cx="260" cy="315" r="12"/>
+    <circle cx="85" cy="260" r="12"/>
+    <circle cx="315" cy="260" r="12"/>
+  </g>
+</svg>

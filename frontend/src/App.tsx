@@ -93,9 +93,11 @@ const alerts: Alert[] = [
 ]
 
 const navigation = [
-  { to: '/', label: 'Accueil', shortLabel: 'Accueil' },
-  { to: '/gestion', label: 'Gestion', shortLabel: 'Gestion' },
-  { to: '/assistant', label: 'Assistant IA', shortLabel: 'IA' },
+  { to: '/', label: 'Tableau de bord', shortLabel: 'Dashboard' },
+  { to: '/inventaire', label: 'Inventaire', shortLabel: 'Inventaire' },
+  { to: '/assistant', label: 'Assistant IA', shortLabel: 'Assistant' },
+  { to: '/profils', label: 'Profils', shortLabel: 'Profils' },
+  { to: '/historique', label: 'Historique', shortLabel: 'Historique' },
 ]
 
 const profileRoles = [
@@ -193,30 +195,29 @@ function Layout() {
         </nav>
 
         <div className="sidebar-card">
-          <span className="sidebar-card-label">Etat du socle</span>
-          <strong>Frontend pret</strong>
-          <p className="muted">Les pages principales sont en place avec des donnees mock pour commencer vite.</p>
+          <span className="sidebar-card-label">3 alertes</span>
+          <strong>Alerte pharmacie familiale</strong>
+          <p className="muted">2 medicaments bientot perimes, 1 stock critique.</p>
         </div>
       </aside>
 
       <main className="main-panel">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Prototype de travail</p>
-            <h2>Danil et Slim</h2>
+            <h2>Tableau de bord</h2>
+            <p className="muted">5 mars 2026</p>
           </div>
           <div className="topbar-actions">
-            <input className="search-input" placeholder="Recherche globale" aria-label="Recherche globale" />
             <div className="notification-pill">3 alertes</div>
           </div>
         </header>
 
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/inventaire" element={<InventoryPage />} />
+          <Route path="/profils" element={<ProfilesPage />} />
+          <Route path="/historique" element={<HistoryPage />} />
           <Route path="/gestion" element={<GestionPage initialTab="inventaire" />} />
-          <Route path="/inventaire" element={<GestionPage initialTab="inventaire" />} />
-          <Route path="/profils" element={<GestionPage initialTab="beneficiaires" />} />
-          <Route path="/historique" element={<GestionPage initialTab="historique" />} />
           <Route path="/assistant" element={<AssistantPage />} />
         </Routes>
       </main>
@@ -239,7 +240,7 @@ function Layout() {
 
 function DashboardPage() {
   const stats = [
-    { label: 'Medicaments', value: inventory.length },
+    { label: 'Medicaments', value: 8 },
     { label: 'Stock critique', value: inventory.filter((item) => getStatus(item) === 'critical').length },
     { label: 'Bientot perimes', value: inventory.filter((item) => getStatus(item) === 'expiring').length },
     { label: 'Ruptures', value: inventory.filter((item) => getStatus(item) === 'out').length },
@@ -250,60 +251,75 @@ function DashboardPage() {
       <div className="stats-grid">
         {stats.map((stat) => (
           <article key={stat.label} className="card stat-card">
-            <span className="eyebrow">Vue globale</span>
+            <span className="eyebrow">Indicateur</span>
             <strong>{stat.value}</strong>
             <p>{stat.label}</p>
           </article>
         ))}
       </div>
 
-      <article className="card chart-card">
+      <article className="card alerts-board">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Dashboard</p>
-            <h3>Niveaux de stock</h3>
-            <p className="muted">Vue de pilotage pour le gestionnaire principal et les aidants familiaux.</p>
-          </div>
-        </div>
-        <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={inventory}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Alertes</p>
-            <h3>Alertes actives</h3>
+            <p className="eyebrow">Alertes actives</p>
+            <h3>Suivi prioritaire</h3>
           </div>
         </div>
         <div className="stack-list">
           {alerts.map((alert) => (
             <div key={alert.id} className={`alert-row alert-${alert.severity}`}>
               <strong>{alert.title}</strong>
-              <span>{alert.description}</span>
+              <span className="pill">{alert.description}</span>
             </div>
           ))}
         </div>
       </article>
 
+      <div className="dashboard-lower">
+        <article className="card chart-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Niveaux de stock</p>
+              <h3>Quantites actuelles</h3>
+            </div>
+          </div>
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={inventory}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        <article className="card quick-actions">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Actions rapides</p>
+              <h3>Raccourcis</h3>
+            </div>
+          </div>
+          <div className="stack-list">
+            <button className="primary-button" type="button">Ajouter un medicament</button>
+            <button className="secondary-button" type="button">J ai pris mon medicament</button>
+            <button className="secondary-button" type="button">Voir tout le stock</button>
+          </div>
+        </article>
+      </div>
+
       <article className="card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Suivi</p>
-            <h3>Derniers mouvements</h3>
+            <p className="eyebrow">Derniers mouvements</p>
+            <h3>Historique recent</h3>
           </div>
         </div>
         <div className="stack-list">
-          {movements.map((movement) => (
+          {movements.slice(0, 3).map((movement) => (
             <div key={movement.id} className="movement-row">
               <div>
                 <strong>{movement.medicine}</strong>
@@ -313,26 +329,6 @@ function DashboardPage() {
                 <strong>{movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}</strong>
                 <p className="muted">{movement.occurredAt}</p>
               </div>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Famille</p>
-            <h3>Beneficiaires</h3>
-          </div>
-        </div>
-        <div className="stack-list">
-          {profiles.map((profile) => (
-            <div key={profile.id} className="profile-row">
-              <div>
-                <strong>{profile.name}</strong>
-                <p className="muted">{profile.role}</p>
-              </div>
-              <span className="pill">{profile.medicines} med.</span>
             </div>
           ))}
         </div>
