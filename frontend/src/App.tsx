@@ -115,6 +115,8 @@ type ProfileForm = {
   notes: string
 }
 
+type GestionTab = 'inventaire' | 'beneficiaires' | 'historique'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
 async function fetchJson<T>(path: string, init?: RequestInit) {
@@ -211,10 +213,10 @@ function Layout() {
 
         <Routes>
           <Route path="/" element={<DashboardPage />} />
-          <Route path="/gestion" element={<GestionPage />} />
-          <Route path="/inventaire" element={<GestionPage />} />
-          <Route path="/profils" element={<GestionPage />} />
-          <Route path="/historique" element={<GestionPage />} />
+          <Route path="/gestion" element={<GestionPage initialTab="inventaire" />} />
+          <Route path="/inventaire" element={<GestionPage initialTab="inventaire" />} />
+          <Route path="/profils" element={<GestionPage initialTab="beneficiaires" />} />
+          <Route path="/historique" element={<GestionPage initialTab="historique" />} />
           <Route path="/assistant" element={<AssistantPage />} />
         </Routes>
       </main>
@@ -460,7 +462,13 @@ function InventoryPage() {
   )
 }
 
-function GestionPage() {
+function GestionPage({ initialTab = 'inventaire' }: { initialTab?: GestionTab }) {
+  const [activeTab, setActiveTab] = useState<GestionTab>(initialTab)
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
+
   return (
     <>
       <section className="page-grid">
@@ -472,11 +480,36 @@ function GestionPage() {
               <p className="muted">Cette page regroupe toutes les operations de gestion du foyer.</p>
             </div>
           </div>
+
+          <div className="button-row" aria-label="Onglets gestion">
+            <button
+              className={activeTab === 'inventaire' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setActiveTab('inventaire')}
+            >
+              Inventaire
+            </button>
+            <button
+              className={activeTab === 'beneficiaires' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setActiveTab('beneficiaires')}
+            >
+              Beneficiaires
+            </button>
+            <button
+              className={activeTab === 'historique' ? 'primary-button' : 'secondary-button'}
+              type="button"
+              onClick={() => setActiveTab('historique')}
+            >
+              Historique
+            </button>
+          </div>
         </article>
       </section>
-      <InventoryPage />
-      <ProfilesPage />
-      <HistoryPage />
+
+      {activeTab === 'inventaire' ? <InventoryPage /> : null}
+      {activeTab === 'beneficiaires' ? <ProfilesPage /> : null}
+      {activeTab === 'historique' ? <HistoryPage /> : null}
     </>
   )
 }
