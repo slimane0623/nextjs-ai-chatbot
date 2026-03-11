@@ -1,4 +1,4 @@
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import {
   Bar,
   BarChart,
@@ -14,9 +14,19 @@ type Profile = {
   id: number
   name: string
   role: string
+  birthDate: string
   allergies: string
   notes: string
   medicines: number
+}
+
+type ProfileApiRow = {
+  id: number
+  name: string
+  role: string
+  birthDate: string
+  allergies: string
+  notes: string
 }
 
 type InventoryItem = {
@@ -56,10 +66,10 @@ type ChatMessage = {
 }
 
 const profiles: Profile[] = [
-  { id: 1, name: 'Danil', role: 'Gestionnaire principal', allergies: 'Aucune', notes: 'Profil principal', medicines: 12 },
-  { id: 2, name: 'Slim', role: 'Patient chronique', allergies: 'Penicilline', notes: 'Suivi quotidien', medicines: 5 },
-  { id: 3, name: 'Mamie Jeanne', role: 'Senior', allergies: 'Aucune', notes: 'Traitement long', medicines: 8 },
-  { id: 4, name: 'Claire', role: 'Aidant familial', allergies: 'Aucune', notes: 'Peut assister les saisies', medicines: 0 },
+  { id: 1, name: 'Danil', role: 'Gestionnaire principal', birthDate: '1999-05-10', allergies: 'Aucune', notes: 'Profil principal', medicines: 12 },
+  { id: 2, name: 'Slim', role: 'Patient chronique', birthDate: '2000-02-14', allergies: 'Penicilline', notes: 'Suivi quotidien', medicines: 5 },
+  { id: 3, name: 'Mamie Jeanne', role: 'Senior', birthDate: '1948-09-01', allergies: 'Aucune', notes: 'Traitement long', medicines: 8 },
+  { id: 4, name: 'Claire', role: 'Aidant familial', birthDate: '1988-06-22', allergies: 'Aucune', notes: 'Peut assister les saisies', medicines: 0 },
 ]
 
 const inventory: InventoryItem[] = [
@@ -89,6 +99,39 @@ const navigation = [
   { to: '/historique', label: 'Historique', shortLabel: 'Logs' },
   { to: '/assistant', label: 'Assistant IA', shortLabel: 'IA' },
 ]
+
+const profileRoles = [
+  'Gestionnaire principal',
+  'Patient chronique',
+  'Senior',
+  'Aidant familial',
+] as const
+
+type ProfileRole = (typeof profileRoles)[number]
+
+type ProfileForm = {
+  name: string
+  role: ProfileRole
+  birthDate: string
+  allergies: string
+  notes: string
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
+
+async function fetchJson<T>(path: string, init?: RequestInit) {
+  const response = await fetch(`${API_BASE_URL}${path}`, init)
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json() as Promise<T>
+}
 
 function getStatus(item: InventoryItem) {
   if (item.quantity <= 0) {
@@ -413,22 +456,255 @@ function InventoryPage() {
 }
 
 function ProfilesPage() {
+  const [profileRows, setProfileRows] = useState<Profile[]>(profiles)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [form, setForm] = useState<ProfileForm>({
+    name: '',
+    role: profileRoles[0],
+    birthDate: '',
+    allergies: '',
+    notes: '',
+  })
+
+  function mapProfile(row: ProfileApiRow): Profile {
+    return {
+      ...row,
+      medicines: inventory.filter((item) => item.profile === row.name).length,
+    }
+  }
+
+  async function loadProfiles() {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const rows = await fetchJson<ProfileApiRow[]>('/api/profiles')
+      setProfileRows(rows.map(mapProfile))
+    } catch {
+      setError('Impossible de charger les profils. Verifie que le backend tourne sur le port 4000.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadProfiles()
+  }, [])
+
+  function resetForm() {
+    setForm({
+      name: '',
+      role: profileRoles[0],
+      birthDate: '',
+      allergies: '',
+      notes: '',
+    })
+    setEditingId(null)
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setError(null)
+
+    const payload = {
+      name: form.name.trim(),
+      role: form.role,
+      birthDate: form.birthDate,
+      allergies: form.allergies.trim() || 'Aucune',
+      notes: form.notes.trim(),
+    }
+
+    if (!payload.name || !payload.birthDate) {
+      setSaving(false)
+      setError('Le nom et la date de naissance sont obligatoires.')
+      return
+    }
+
+    try {
+      if (editingId === null) {
+        const created = await fetchJson<ProfileApiRow>('/api/profiles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        setProfileRows((current) => [mapProfile(created), ...current])
+      } else {
+        const updated = await fetchJson<ProfileApiRow>(`/api/profiles/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        setProfileRows((current) => current.map((profile) => (
+          profile.id === updated.id ? mapProfile(updated) : profile
+        )))
+      }
+
+      resetForm()
+    } catch {
+      setError('Echec de sauvegarde du profil.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleEdit(profile: Profile) {
+    setEditingId(profile.id)
+    setForm({
+      name: profile.name,
+      role: profile.role as ProfileRole,
+      birthDate: profile.birthDate,
+      allergies: profile.allergies,
+      notes: profile.notes,
+    })
+  }
+
+  async function handleDelete(profileId: number) {
+    setSaving(true)
+    setError(null)
+
+    try {
+      await fetchJson<void>(`/api/profiles/${profileId}`, { method: 'DELETE' })
+      setProfileRows((current) => current.filter((profile) => profile.id !== profileId))
+      if (editingId === profileId) {
+        resetForm()
+      }
+    } catch {
+      setError('Echec de suppression du profil.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <section className="page-grid simple-grid">
-      {profiles.map((profile) => (
-        <article key={profile.id} className="card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Profil familial</p>
-              <h3>{profile.name}</h3>
-            </div>
-            <span className="pill">{profile.role}</span>
+    <section className="page-grid profiles-crud-layout">
+      <article className="card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Profils familiaux</p>
+            <h3>{editingId === null ? 'Creer un profil' : 'Modifier le profil'}</h3>
           </div>
-          <p><strong>Allergies:</strong> {profile.allergies}</p>
-          <p><strong>Notes:</strong> {profile.notes}</p>
-          <p><strong>Medicaments attribues:</strong> {profile.medicines}</p>
-        </article>
-      ))}
+        </div>
+
+        <form className="profile-form" onSubmit={handleSubmit}>
+          <label className="field-stack" htmlFor="profile-name">
+            <span>Nom</span>
+            <input
+              id="profile-name"
+              className="search-input"
+              value={form.name}
+              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+              placeholder="Ex: Mamie Jeanne"
+              disabled={saving}
+            />
+          </label>
+
+          <label className="field-stack" htmlFor="profile-role">
+            <span>Type</span>
+            <select
+              id="profile-role"
+              className="select-input"
+              value={form.role}
+              onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as ProfileRole }))}
+              disabled={saving}
+            >
+              {profileRoles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-stack" htmlFor="profile-birth-date">
+            <span>Date de naissance</span>
+            <input
+              id="profile-birth-date"
+              type="date"
+              className="search-input"
+              value={form.birthDate}
+              onChange={(event) => setForm((current) => ({ ...current, birthDate: event.target.value }))}
+              disabled={saving}
+            />
+          </label>
+
+          <label className="field-stack" htmlFor="profile-allergies">
+            <span>Allergies</span>
+            <input
+              id="profile-allergies"
+              className="search-input"
+              value={form.allergies}
+              onChange={(event) => setForm((current) => ({ ...current, allergies: event.target.value }))}
+              placeholder="Ex: Penicilline"
+              disabled={saving}
+            />
+          </label>
+
+          <label className="field-stack field-full-width" htmlFor="profile-notes">
+            <span>Notes</span>
+            <textarea
+              id="profile-notes"
+              className="profile-textarea"
+              rows={3}
+              value={form.notes}
+              onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+              placeholder="Informations complementaires"
+              disabled={saving}
+            />
+          </label>
+
+          <div className="button-row">
+            <button className="primary-button" type="submit" disabled={saving}>
+              {editingId === null ? 'Ajouter profil' : 'Enregistrer profil'}
+            </button>
+            {editingId !== null ? (
+              <button className="secondary-button" type="button" onClick={resetForm} disabled={saving}>
+                Annuler
+              </button>
+            ) : null}
+          </div>
+        </form>
+        {error ? <p className="error-text">{error}</p> : null}
+      </article>
+
+      <article className="card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Liste profils</p>
+            <h3>{profileRows.length} profils</h3>
+          </div>
+          <button className="secondary-button" type="button" onClick={() => void loadProfiles()} disabled={loading || saving}>
+            Rafraichir
+          </button>
+        </div>
+
+        {loading ? <p>Chargement des profils...</p> : null}
+
+        <div className="stack-list">
+          {profileRows.map((profile) => (
+            <article key={profile.id} className="profile-item">
+              <div>
+                <strong>{profile.name}</strong>
+                <p className="muted">{profile.role}</p>
+                <p><strong>Naissance:</strong> {profile.birthDate}</p>
+                <p><strong>Allergies:</strong> {profile.allergies}</p>
+                <p><strong>Notes:</strong> {profile.notes || 'Aucune note'}</p>
+                <p><strong>Medicaments attribues:</strong> {profile.medicines}</p>
+              </div>
+
+              <div className="button-row">
+                <button className="secondary-button" type="button" onClick={() => handleEdit(profile)} disabled={saving}>
+                  Modifier
+                </button>
+                <button className="danger-button" type="button" onClick={() => void handleDelete(profile.id)} disabled={saving}>
+                  Supprimer
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </article>
     </section>
   )
 }
