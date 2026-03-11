@@ -152,6 +152,77 @@ Livrable minimum Sprint 3:
   - Optimisation performance IA locale
   - Documentation backend
 
+## 6.1) Mode de travail recommande (feature verticale)
+Principe:
+- Chaque personne prend une feature complete: Frontend + Backend lies
+- Une PR n est complete que si UI + API + test manuel sont livres ensemble
+- Base de travail sprint: `sprint-X-...`, puis branches feature dediees
+
+Template de branche:
+- `feat/sX-nom-feature-danil`
+- `feat/sX-nom-feature-slim`
+
+## 6.2) Repartition verticale Sprint 1 -> Sprint 6
+## Sprint 1 - Base de donnees + CRUD + roles
+- Danil (feature: profils CRUD)
+  - Front: ecrans profils (liste, creation, edition, suppression)
+  - Back: endpoints `GET/POST/PUT/DELETE /api/profiles` connectes a SQLite
+  - Definition of done: operations CRUD profils fonctionnelles depuis UI
+- Slim (feature: inventaire CRUD)
+  - Front: ecran inventaire (liste + ajout + edition + suppression)
+  - Back: endpoints `GET/POST/PUT/DELETE /api/inventory` + validation Zod
+  - Definition of done: ajout/modification inventaire visible en UI et persiste en DB
+
+## Sprint 2 - Inventaire complet + profils
+- Danil (feature: inventaire actions rapides)
+  - Front: ecran inventaire (recherche, filtres, fiche detaillee)
+  - Back: endpoint prise/ajout stock + validation payload
+  - Definition of done: un clic UI decremente/incremente stock et cree un mouvement
+- Slim (feature: alertes + historique)
+  - Front: page historique avec filtres type/profil
+  - Back: regles alertes (critique/peremption) + API historique filtree
+  - Definition of done: alertes coherentes dashboard/inventaire + historique filtre
+
+## Sprint 3 - IA locale et chat
+- Danil (feature: UX chat)
+  - Front: bulles, suggestions, typing indicator, erreurs/retry
+  - Back: contrat API chat (schema request/response) + gestion timeout
+  - Definition of done: chat stable meme en reponse lente
+- Slim (feature: moteur IA local)
+  - Front: etat modele (disponible/indisponible) visible dans UI
+  - Back: integration Ollama/Llama.cpp + endpoint NLP + disclaimers
+  - Definition of done: question utilisateur -> reponse locale avec disclaimer
+
+## Sprint 4 - Dashboard + notifications + historique
+- Danil (feature: dashboard analytique)
+  - Front: cartes KPI, graphiques, liste alertes actives, timeline recente
+  - Back: endpoint dashboard agrege (stats + alertes + mouvements)
+  - Definition of done: chargement dashboard < 2s en local
+- Slim (feature: notifications)
+  - Front: centre notifications (liste, non lues/lues)
+  - Back: generation notifications metier + marquage lues
+  - Definition of done: chaque evenement critique cree une notification tracable
+
+## Sprint 5 - Responsive avance + recherche globale
+- Danil (feature: mobile first)
+  - Front: optimisation mobile (bottom nav, grilles, modal/form)
+  - Back: adaptations mineures API pour pagination/tri si necessaire
+  - Definition of done: parcours complet mobile sans chevauchement UI
+- Slim (feature: recherche globale)
+  - Front: barre recherche globale (inventaire + profils + historique)
+  - Back: endpoint recherche combinee + filtres croises
+  - Definition of done: une requete renvoie des resultats classes par categorie
+
+## Sprint 6 - Stabilisation finale
+- Danil (feature: qualite front)
+  - Front: correction UX, etats de chargement/erreur, coherence visuelle finale
+  - Back: verif integration front/back sur tous les ecrans
+  - Definition of done: zero blocage UX critique en recette
+- Slim (feature: qualite back + doc)
+  - Front: support recette (repro steps, cas limites)
+  - Back: optimisation endpoint IA, perf API, documentation technique
+  - Definition of done: doc runnable + endpoints stables en test charge local
+
 ## 7) Risques et mitigations (cahier des charges)
 - R1 Performance LLM locale insuffisante (impact eleve)
   - Mitigation: modele quantize leger + configuration minimale recommandee
