@@ -10,6 +10,7 @@ Guide complet pour installer, lancer et tester le projet MediStock AI localement
 - **npm** >= 11.0 (inclus avec Node.js)
 - **Git** (optionnel, pour cloner le repo)
 - **Navigateur moderne** (Chrome, Firefox, Edge, Safari)
+- **Moteur IA local**: Ollama ou llama.cpp (requis pour le chat local réel)
 
 ### Vérifier votre installation :
 ```powershell
@@ -25,6 +26,32 @@ npm --version     # Doit afficher 11+
 ```powershell
 cd backend
 npm install
+```
+
+### Configuration IA locale (Sprint 3) :
+
+Créez `backend/.env` (ou utilisez les variables d environnement de votre shell) :
+
+```env
+CHAT_PROVIDER=ollama
+CHAT_MODEL=llama3.2:3b
+CHAT_TIMEOUT_MS=12000
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+LLAMA_CPP_BASE_URL=http://127.0.0.1:8080
+CHAT_DISCLAIMER=Assistant local informatif uniquement. Ne remplace pas un avis medical professionnel.
+```
+
+Exemple Ollama :
+```powershell
+ollama pull llama3.2:3b
+ollama serve
+```
+
+Exemple llama.cpp (OpenAI-compatible server) :
+```powershell
+# Démarrer votre serveur llama.cpp avec endpoint /v1/* sur le port 8080
+# puis définir:
+$env:CHAT_PROVIDER="llama_cpp"
 ```
 
 ### Frontend :
@@ -81,7 +108,7 @@ Vous verrez :
 - 📦 Inventaire (4 médicaments avec filtres)
 - 👥 Profils (4 membres de la famille)
 - 📜 Historique (4 mouvements)
-- 💬 Assistant (chat simulé)
+- 💬 Assistant (chat local Ollama/llama.cpp + statut du modèle)
 
 ---
 
@@ -123,18 +150,19 @@ curl http://localhost:4000/api/history
 ```
 Retourne : 4 entrées d'historique (dates, types, quantités)
 
-#### 5. Chat (Assistant IA simulé)
+#### 5. Statut du modèle local
+```powershell
+curl http://localhost:4000/api/chat/status
+```
+Retourne : disponibilité du modèle local (`available`), provider actif (`ollama` / `llama_cpp`), modèle et raison éventuelle d indisponibilité
+
+#### 6. Chat (Assistant IA local)
 ```powershell
 curl -X POST http://localhost:4000/api/chat `
   -H "Content-Type: application/json" `
   -d '{"message":"Quels médicaments sont expirés?"}'
 ```
-Retourne : réponse simulée + disclaimer
-
-#### 6. Profils détaillés
-```powershell
-curl http://localhost:4000/api/profiles
-```
+Retourne : réponse générée localement + disclaimer de sécurité
 
 ---
 

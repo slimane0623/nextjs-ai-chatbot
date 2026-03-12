@@ -119,6 +119,7 @@ type ChatApiSuccess = {
   reply: string
   disclaimer: string
   meta: {
+    provider: string
     model: string
     latencyMs: number
     timeoutMs: number
@@ -133,10 +134,22 @@ type ChatApiFailure = {
     message: string
   }
   meta?: {
-    model: string
+    provider: string | null
+    model: string | null
     latencyMs: number
     timeoutMs: number
   }
+}
+
+type ChatStatusApiResponse = {
+  ok: true
+  provider: 'ollama' | 'llama_cpp'
+  model: string
+  baseUrl: string
+  available: boolean
+  reason: string | null
+  checkedAt: string
+  timeoutMs: number
 }
 
 type DashboardApiPayload = {
@@ -1357,6 +1370,8 @@ function AssistantPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null)
+  const [modelStatus, setModelStatus] = useState<ChatStatusApiResponse | null>(null)
+  const [isCheckingModel, setIsCheckingModel] = useState(true)
 
   const suggestions = [
     'Verifier interactions',
@@ -1364,6 +1379,58 @@ function AssistantPage() {
     'Stock faible',
     'Prochain renouvellement',
   ]
+
+  useEffect(() => {
+    let active = true
+
+    async function loadModelStatus(silent = false) {
+      if (!silent) {
+        setIsCheckingModel(true)
+      }
+
+      try {
+        const status = await fetchJson<ChatStatusApiResponse>('/api/chat/status')
+
+        if (!active) {
+          return
+        }
+
+        setModelStatus(status)
+      } catch {
+        if (!active) {
+          return
+        }
+
+        setModelStatus((previous) => ({
+          ok: true,
+          provider: previous?.provider ?? 'ollama',
+          model: 'inconnu',
+          baseUrl: 'n/a',
+          available: false,
+          reason: 'Impossible de verifier le modele local.',
+          checkedAt: new Date().toISOString(),
+          timeoutMs: 0,
+        }))
+      } finally {
+        if (active && !silent) {
+          setIsCheckingModel(false)
+        }
+      }
+    }
+
+    void loadModelStatus()
+    const timerId = window.setInterval(() => {
+      void loadModelStatus(true)
+    }, 15000)
+
+    return () => {
+      active = false
+      window.clearInterval(timerId)
+    }
+  }, [])
+
+  const isModelAvailable = Boolean(modelStatus?.available)
+  const canInteract = isModelAvailable && !isCheckingModel
 
   async function askChatApi(message: string, history: ChatApiRequest['history']) {
     const requestId = `${Date.now()}`
@@ -1390,6 +1457,11 @@ function AssistantPage() {
     const trimmedMessage = message.trim()
 
     if (!trimmedMessage) {
+      return
+    }
+
+    if (!canInteract) {
+      setChatError(modelStatus?.reason ?? 'Modele local indisponible. Demarre Ollama ou llama.cpp.')
       return
     }
 
@@ -1447,12 +1519,22 @@ function AssistantPage() {
           <div>
             <p className="eyebrow">Assistant IA</p>
             <h3>Chat local</h3>
+            <p className={isModelAvailable ? 'model-status model-status-ready' : 'model-status model-status-down'}>
+              {isCheckingModel
+                ? 'Modele local: verification...'
+                : isModelAvailable
+                  ? `Modele local: disponible (${modelStatus?.provider} / ${modelStatus?.model})`
+                  : 'Modele local: indisponible'}
+            </p>
+            {!isCheckingModel && !isModelAvailable && modelStatus?.reason ? (
+              <p className="muted">{modelStatus.reason}</p>
+            ) : null}
           </div>
         </div>
 
         <div className="suggestion-row">
           {suggestions.map((suggestion) => (
-            <button key={suggestion} type="button" className="secondary-button" onClick={() => void sendMessage(suggestion)} disabled={isTyping}>
+            <button key={suggestion} type="button" className="secondary-button" onClick={() => void sendMessage(suggestion)} disabled={isTyping || !canInteract}>
               {suggestion}
             </button>
           ))}
@@ -1489,9 +1571,9 @@ function AssistantPage() {
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ecrire un message"
             aria-label="Ecrire un message"
-            disabled={isTyping}
+            disabled={isTyping || !canInteract}
           />
-          <button className="primary-button" type="submit" disabled={isTyping || !input.trim()}>
+          <button className="primary-button" type="submit" disabled={isTyping || !input.trim() || !canInteract}>
             {isTyping ? 'Envoi...' : 'Envoyer'}
           </button>
         </form>
