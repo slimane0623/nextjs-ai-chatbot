@@ -34,11 +34,25 @@ type InventoryItem = {
   name: string
   dosage: string
   form: string
+  profileId: number | null
   profile: string
   quantity: number
   unit: string
   expiryDate: string
   threshold: number
+  location: string
+  notes: string
+}
+
+type InventoryForm = {
+  name: string
+  dosage: string
+  form: string
+  profileId: string
+  quantity: string
+  unit: string
+  expiryDate: string
+  threshold: string
   location: string
   notes: string
 }
@@ -93,32 +107,16 @@ type ChatMessage = {
   content: string
 }
 
-const profiles: Profile[] = [
-  { id: 1, name: 'Danil', role: 'Gestionnaire principal', birthDate: '1999-05-10', allergies: 'Aucune', notes: 'Profil principal', medicines: 12 },
-  { id: 2, name: 'Slim', role: 'Patient chronique', birthDate: '2000-02-14', allergies: 'Penicilline', notes: 'Suivi quotidien', medicines: 5 },
-  { id: 3, name: 'Mamie Jeanne', role: 'Senior', birthDate: '1948-09-01', allergies: 'Aucune', notes: 'Traitement long', medicines: 8 },
-  { id: 4, name: 'Claire', role: 'Aidant familial', birthDate: '1988-06-22', allergies: 'Aucune', notes: 'Peut assister les saisies', medicines: 0 },
-]
-
-const inventory: InventoryItem[] = [
-  { id: 1, name: 'Doliprane', dosage: '1000 mg', form: 'Comprime', profile: 'Danil', quantity: 16, unit: 'comprimes', expiryDate: '2026-06-14', threshold: 4, location: 'Cuisine', notes: 'Boite entamee' },
-  { id: 2, name: 'Metformine', dosage: '500 mg', form: 'Comprime', profile: 'Slim', quantity: 8, unit: 'comprimes', expiryDate: '2026-03-29', threshold: 5, location: 'Salon', notes: 'Renouvellement proche' },
-  { id: 3, name: 'Levothyrox', dosage: '75 ug', form: 'Comprime', profile: 'Mamie Jeanne', quantity: 0, unit: 'comprimes', expiryDate: '2026-04-06', threshold: 2, location: 'Boite senior', notes: 'Rupture' },
-  { id: 4, name: 'Amoxicilline', dosage: '500 mg', form: 'Gelule', profile: 'Danil', quantity: 10, unit: 'gelules', expiryDate: '2026-03-20', threshold: 3, location: 'Salle de bain', notes: 'Traitement en cours' },
-]
-
-const movements: Movement[] = [
-  { id: 1, medicine: 'Doliprane 1000 mg', profile: 'Danil', type: 'prise', quantityDelta: -2, occurredAt: '10 mars 20:30' },
-  { id: 2, medicine: 'Metformine 500 mg', profile: 'Slim', type: 'prise', quantityDelta: -1, occurredAt: '10 mars 12:00' },
-  { id: 3, medicine: 'Doliprane 1000 mg', profile: 'Danil', type: 'ajout', quantityDelta: 16, occurredAt: '09 mars 18:15' },
-  { id: 4, medicine: 'Levothyrox 75 ug', profile: 'Mamie Jeanne', type: 'alerte', quantityDelta: 0, occurredAt: '09 mars 08:00' },
-]
-
-const alerts: Alert[] = [
-  { id: 1, severity: 'warning', title: 'Metformine bientot critique', description: '8 comprimes restants pour Slim' },
-  { id: 2, severity: 'warning', title: 'Amoxicilline proche peremption', description: 'Peremption prevue le 2026-03-20' },
-  { id: 3, severity: 'critical', title: 'Levothyrox en rupture', description: 'Aucun stock disponible pour Mamie Jeanne' },
-]
+type DashboardApiPayload = {
+  stats: {
+    totalMedicines: number
+    criticalCount: number
+    expiringCount: number
+    outOfStockCount: number
+  }
+  alerts: Alert[]
+  movements: MovementApiRow[]
+}
 
 const navigation = [
   { to: '/', label: 'Tableau de bord', shortLabel: 'Dashboard' },
@@ -206,6 +204,7 @@ function mapInventory(row: InventoryApiRow): InventoryItem {
     name: row.medicineName,
     dosage: row.dosage,
     form: row.form,
+    profileId: row.profileId,
     profile: row.profileName ?? 'Foyer',
     quantity: row.quantity,
     unit: row.unit,
@@ -213,6 +212,36 @@ function mapInventory(row: InventoryApiRow): InventoryItem {
     threshold: row.criticalThreshold,
     location: row.location,
     notes: row.notes,
+  }
+}
+
+function toInventoryForm(item: InventoryItem): InventoryForm {
+  return {
+    name: item.name,
+    dosage: item.dosage,
+    form: item.form,
+    profileId: item.profileId ? String(item.profileId) : '',
+    quantity: String(item.quantity),
+    unit: item.unit,
+    expiryDate: item.expiryDate,
+    threshold: String(item.threshold),
+    location: item.location,
+    notes: item.notes,
+  }
+}
+
+function getEmptyInventoryForm(): InventoryForm {
+  return {
+    name: '',
+    dosage: '',
+    form: 'Comprime',
+    profileId: '',
+    quantity: '0',
+    unit: 'comprimes',
+    expiryDate: new Date().toISOString().slice(0, 10),
+    threshold: '1',
+    location: '',
+    notes: '',
   }
 }
 
@@ -272,9 +301,9 @@ function Layout() {
         </nav>
 
         <div className="sidebar-card">
-          <span className="sidebar-card-label">3 alertes</span>
+          <span className="sidebar-card-label">Suivi alertes</span>
           <strong>Alerte pharmacie familiale</strong>
-          <p className="muted">2 medicaments bientot perimes, 1 stock critique.</p>
+          <p className="muted">Consultez le tableau de bord pour le detail en temps reel.</p>
         </div>
       </aside>
 
@@ -286,7 +315,7 @@ function Layout() {
             <p className="muted">5 mars 2026</p>
           </div>
           <div className="topbar-actions">
-            <div className="notification-pill">3 alertes</div>
+            <div className="notification-pill">Alertes</div>
           </div>
         </header>
 
@@ -317,12 +346,82 @@ function Layout() {
 }
 
 function DashboardPage() {
-  const stats = [
-    { label: 'Medicaments', value: 8 },
-    { label: 'Stock critique', value: inventory.filter((item) => getStatus(item) === 'critical').length },
-    { label: 'Bientot perimes', value: inventory.filter((item) => getStatus(item) === 'expiring').length },
-    { label: 'Ruptures', value: inventory.filter((item) => getStatus(item) === 'out').length },
-  ]
+  const [stats, setStats] = useState([
+    { label: 'Medicaments', value: 0 },
+    { label: 'Stock critique', value: 0 },
+    { label: 'Bientot perimes', value: 0 },
+    { label: 'Ruptures', value: 0 },
+  ])
+  const [activeAlerts, setActiveAlerts] = useState<Alert[]>([])
+  const [recentMovements, setRecentMovements] = useState<Movement[]>([])
+  const [chartItems, setChartItems] = useState<InventoryItem[]>([])
+  const [dashboardProfiles, setDashboardProfiles] = useState<Profile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadDashboard() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [dashboard, inventoryRows, profileRows] = await Promise.all([
+          fetchJson<DashboardApiPayload>('/api/dashboard'),
+          fetchJson<InventoryApiRow[]>('/api/inventory'),
+          fetchJson<ProfileApiRow[]>('/api/profiles'),
+        ])
+
+        if (!mounted) {
+          return
+        }
+
+        setStats([
+          { label: 'Medicaments', value: dashboard.stats.totalMedicines },
+          { label: 'Stock critique', value: dashboard.stats.criticalCount },
+          { label: 'Bientot perimes', value: dashboard.stats.expiringCount },
+          { label: 'Ruptures', value: dashboard.stats.outOfStockCount },
+        ])
+
+        setActiveAlerts(dashboard.alerts)
+        setRecentMovements(dashboard.movements.map(mapMovement))
+
+        const mappedInventory = inventoryRows.map(mapInventory)
+        setChartItems(mappedInventory)
+
+        const medicinesByProfile = new Map<number, number>()
+
+        for (const item of inventoryRows) {
+          if (item.profileId === null) {
+            continue
+          }
+
+          const current = medicinesByProfile.get(item.profileId) ?? 0
+          medicinesByProfile.set(item.profileId, current + 1)
+        }
+
+        setDashboardProfiles(profileRows.map((profile) => ({
+          ...profile,
+          medicines: medicinesByProfile.get(profile.id) ?? 0,
+        })))
+      } catch {
+        if (mounted) {
+          setError('Impossible de charger le tableau de bord depuis l API.')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void loadDashboard()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <section className="page-grid">
@@ -346,7 +445,7 @@ function DashboardPage() {
         </div>
         <div className="chart-wrap">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={inventory}>
+            <BarChart data={chartItems}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="name" />
               <YAxis />
@@ -365,12 +464,13 @@ function DashboardPage() {
           </div>
         </div>
         <div className="stack-list">
-          {alerts.map((alert) => (
+          {activeAlerts.map((alert) => (
             <div key={alert.id} className={`alert-row alert-${alert.severity}`}>
               <strong>{alert.title}</strong>
               <span>{alert.description}</span>
             </div>
           ))}
+          {!loading && activeAlerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
         </div>
       </article>
 
@@ -382,7 +482,7 @@ function DashboardPage() {
           </div>
         </div>
         <div className="stack-list">
-          {movements.slice(0, 5).map((movement) => (
+          {recentMovements.slice(0, 5).map((movement) => (
             <div key={movement.id} className="movement-row">
               <div>
                 <strong>{movement.medicine}</strong>
@@ -394,6 +494,7 @@ function DashboardPage() {
               </div>
             </div>
           ))}
+          {!loading && recentMovements.length === 0 ? <p className="muted">Aucun mouvement recent.</p> : null}
         </div>
       </article>
 
@@ -405,7 +506,7 @@ function DashboardPage() {
           </div>
         </div>
         <div className="stack-list">
-          {profiles.map((profile) => (
+          {dashboardProfiles.map((profile) => (
             <div key={profile.id} className="profile-row">
               <div>
                 <strong>{profile.name}</strong>
@@ -414,22 +515,28 @@ function DashboardPage() {
               <span className="pill">{profile.medicines} med.</span>
             </div>
           ))}
+          {!loading && dashboardProfiles.length === 0 ? <p className="muted">Aucun profil disponible.</p> : null}
         </div>
+        {error ? <p className="error-text">{error}</p> : null}
       </article>
     </section>
   )
 }
 
 function InventoryPage() {
+  const [items, setItems] = useState<InventoryItem[]>([])
+  const [profileOptions, setProfileOptions] = useState<Array<{ id: number, name: string }>>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
-  const [inventoryRows, setInventoryRows] = useState<InventoryItem[]>([])
-  const [selectedId, setSelectedId] = useState(0)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [mode, setMode] = useState<'create' | 'edit'>('create')
+  const [form, setForm] = useState<InventoryForm>(getEmptyInventoryForm())
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionPending, setActionPending] = useState(false)
 
-  async function loadInventory() {
+  async function loadInventory(preferredId?: number | null) {
     setLoading(true)
     setError(null)
 
@@ -445,14 +552,38 @@ function InventoryPage() {
       }
 
       const query = params.toString()
-      const rows = await fetchJson<InventoryApiRow[]>(`/api/inventory${query ? `?${query}` : ''}`)
-      const mapped = rows.map(mapInventory)
+      const inventoryPath = query ? `/api/inventory?${query}` : '/api/inventory'
 
-      setInventoryRows(mapped)
-      setSelectedId((current) => {
-        const hasCurrent = mapped.some((item) => item.id === current)
-        return hasCurrent ? current : (mapped[0]?.id ?? 0)
-      })
+      const [inventoryRows, profileRows] = await Promise.all([
+        fetchJson<InventoryApiRow[]>(inventoryPath),
+        fetchJson<ProfileApiRow[]>('/api/profiles'),
+      ])
+
+      const mapped = inventoryRows.map(mapInventory)
+
+      setItems(mapped)
+      setProfileOptions(profileRows.map((row) => ({ id: row.id, name: row.name })))
+
+      if (mapped.length === 0) {
+        setSelectedId(null)
+        setMode('create')
+        setForm(getEmptyInventoryForm())
+        return
+      }
+
+      const candidateId = preferredId ?? selectedId
+      const hasCandidate = candidateId !== null && mapped.some((item) => item.id === candidateId)
+      const nextId = hasCandidate ? candidateId : mapped[0].id
+
+      setSelectedId(nextId)
+
+      if (mode === 'edit') {
+        const selected = mapped.find((item) => item.id === nextId)
+
+        if (selected) {
+          setForm(toInventoryForm(selected))
+        }
+      }
     } catch {
       setError('Impossible de charger l inventaire. Verifie que le backend tourne sur le port 4000.')
     } finally {
@@ -464,14 +595,109 @@ function InventoryPage() {
     void loadInventory()
   }, [search, status])
 
-  const selectedItem = inventoryRows.find((item) => item.id === selectedId) ?? inventoryRows[0]
+  const selectedItem = items.find((item) => item.id === selectedId) ?? null
+
+  function startCreate() {
+    setMode('create')
+    setSelectedId(null)
+    setForm(getEmptyInventoryForm())
+    setError(null)
+  }
+
+  function startEdit(item: InventoryItem) {
+    setMode('edit')
+    setSelectedId(item.id)
+    setForm(toInventoryForm(item))
+    setError(null)
+  }
+
+  function setField(field: keyof InventoryForm, value: string) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const quantity = Number(form.quantity)
+    const threshold = Number(form.threshold)
+
+    if (!Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(threshold) || threshold < 0) {
+      setError('Quantite et seuil critique doivent etre des nombres entiers >= 0.')
+      return
+    }
+
+    const payload = {
+      medicineName: form.name.trim(),
+      dosage: form.dosage.trim(),
+      form: form.form.trim(),
+      profileId: form.profileId ? Number(form.profileId) : null,
+      quantity,
+      unit: form.unit.trim(),
+      expiryDate: form.expiryDate,
+      criticalThreshold: threshold,
+      location: form.location.trim(),
+      notes: form.notes.trim(),
+    }
+
+    if (!payload.medicineName || !payload.dosage || !payload.form || !payload.unit || !payload.expiryDate || !payload.location) {
+      setError('Tous les champs obligatoires doivent etre remplis.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      const isCreate = mode === 'create' || selectedItem === null
+      const path = isCreate ? '/api/inventory' : `/api/inventory/${selectedItem.id}`
+      const method = isCreate ? 'POST' : 'PUT'
+
+      const saved = await fetchJson<InventoryApiRow>(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      setMode('edit')
+      setSelectedId(saved.id)
+      setForm(toInventoryForm(mapInventory(saved)))
+      await loadInventory(saved.id)
+    } catch {
+      setError('Echec de sauvegarde inventaire.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedItem) {
+      return
+    }
+
+    if (!globalThis.confirm(`Supprimer ${selectedItem.name} de l inventaire ?`)) {
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      await fetchJson<void>(`/api/inventory/${selectedItem.id}`, { method: 'DELETE' })
+      startCreate()
+      await loadInventory()
+    } catch {
+      setError('Echec de suppression inventaire.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleQuickAction(type: 'prise' | 'ajout') {
     if (!selectedItem) {
       return
     }
 
-    const quantityInput = window.prompt(
+    const quantityInput = globalThis.prompt(
       type === 'prise' ? 'Quantite prise ?' : 'Quantite ajoutee ?',
       '1',
     )
@@ -501,7 +727,7 @@ function InventoryPage() {
         }),
       })
 
-      await loadInventory()
+      await loadInventory(selectedItem.id)
     } catch {
       setError(type === 'prise'
         ? 'Echec de la prise (stock insuffisant ou item introuvable).'
@@ -509,6 +735,12 @@ function InventoryPage() {
     } finally {
       setActionPending(false)
     }
+  }
+
+  let submitLabel = mode === 'create' ? 'Ajouter medicament' : 'Enregistrer modification'
+
+  if (saving) {
+    submitLabel = 'Sauvegarde...'
   }
 
   return (
@@ -519,7 +751,7 @@ function InventoryPage() {
             <p className="eyebrow">Inventaire</p>
             <h3>Gestion du stock</h3>
           </div>
-          <button className="primary-button" type="button">Ajouter un medicament</button>
+          <button className="primary-button" type="button" onClick={startCreate}>Ajouter un medicament</button>
         </div>
 
         <div className="toolbar-row">
@@ -548,79 +780,118 @@ function InventoryPage() {
         {error ? <p className="error-text">{error}</p> : null}
 
         <div className="inventory-grid">
-          {inventoryRows.map((item) => {
+          {items.map((item) => {
             const statusLabel = getStatusLabel(getStatus(item))
             return (
               <button
                 key={item.id}
                 type="button"
                 className={selectedItem?.id === item.id ? 'inventory-card inventory-card-active' : 'inventory-card'}
-                onClick={() => setSelectedId(item.id)}
+                onClick={() => startEdit(item)}
               >
                 <div className="inventory-card-head">
                   <div>
                     <strong>{item.name}</strong>
-                    <p className="muted">{item.dosage} ┬À {item.profile}</p>
+                    <p className="muted">{item.dosage} - {item.profile}</p>
                   </div>
                   <span className="pill">{statusLabel}</span>
                 </div>
                 <progress className="progress-meter" value={item.quantity} max={Math.max(item.threshold * 4, 1)} />
-                <p className="muted">{item.quantity} {item.unit} ┬À Exp. {item.expiryDate}</p>
+                <p className="muted">{item.quantity} {item.unit} - Exp. {item.expiryDate}</p>
               </button>
             )
           })}
         </div>
       </article>
 
-      {selectedItem ? (
-        <article className="card detail-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Fiche detaillee</p>
-              <h3>{selectedItem.name}</h3>
-            </div>
-            <span className="pill">{selectedItem.profile}</span>
+      <article className="card detail-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">{mode === 'create' ? 'Nouveau medicament' : 'Edition medicament'}</p>
+            <h3>{mode === 'create' ? 'Ajouter un element' : selectedItem?.name ?? 'Modifier element'}</h3>
+          </div>
+          {mode === 'edit' && selectedItem ? <span className="pill">{selectedItem.profile}</span> : null}
+        </div>
+
+        <form className="inventory-form" onSubmit={handleSubmit}>
+          <div className="inventory-form-grid">
+            <label className="field-stack">
+              <span>Nom du medicament</span>
+              <input className="search-input" value={form.name} onChange={(event) => setField('name', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Dosage</span>
+              <input className="search-input" value={form.dosage} onChange={(event) => setField('dosage', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Forme</span>
+              <input className="search-input" value={form.form} onChange={(event) => setField('form', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Profil</span>
+              <select className="select-input" value={form.profileId} onChange={(event) => setField('profileId', event.target.value)} disabled={saving}>
+                <option value="">Aucun profil</option>
+                {profileOptions.map((option) => (
+                  <option key={option.id} value={option.id}>{option.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field-stack">
+              <span>Quantite</span>
+              <input className="search-input" type="number" min="0" value={form.quantity} onChange={(event) => setField('quantity', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Unite</span>
+              <input className="search-input" value={form.unit} onChange={(event) => setField('unit', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Date de peremption</span>
+              <input className="search-input" type="date" value={form.expiryDate} onChange={(event) => setField('expiryDate', event.target.value)} disabled={saving} />
+            </label>
+
+            <label className="field-stack">
+              <span>Seuil critique</span>
+              <input className="search-input" type="number" min="0" value={form.threshold} onChange={(event) => setField('threshold', event.target.value)} disabled={saving} />
+            </label>
           </div>
 
-          <dl className="detail-grid">
-            <div>
-              <dt>Dosage</dt>
-              <dd>{selectedItem.dosage}</dd>
-            </div>
-            <div>
-              <dt>Forme</dt>
-              <dd>{selectedItem.form}</dd>
-            </div>
-            <div>
-              <dt>Peremption</dt>
-              <dd>{selectedItem.expiryDate}</dd>
-            </div>
-            <div>
-              <dt>Emplacement</dt>
-              <dd>{selectedItem.location}</dd>
-            </div>
-            <div>
-              <dt>Stock</dt>
-              <dd>{selectedItem.quantity} {selectedItem.unit}</dd>
-            </div>
-            <div>
-              <dt>Seuil critique</dt>
-              <dd>{selectedItem.threshold}</dd>
-            </div>
-          </dl>
+          <label className="field-stack">
+            <span>Emplacement</span>
+            <input className="search-input" value={form.location} onChange={(event) => setField('location', event.target.value)} disabled={saving} />
+          </label>
 
-          <p className="detail-notes">{selectedItem.notes}</p>
+          <label className="field-stack">
+            <span>Notes</span>
+            <textarea className="profile-textarea" rows={3} value={form.notes} onChange={(event) => setField('notes', event.target.value)} disabled={saving} />
+          </label>
 
           <div className="button-row">
-            <button className="primary-button" type="button" onClick={() => void handleQuickAction('prise')} disabled={actionPending}>
-              Enregistrer une prise
-            </button>
-            <button className="secondary-button" type="button" onClick={() => void handleQuickAction('ajout')} disabled={actionPending}>
-              Ajouter du stock
-            </button>
+            <button className="primary-button" type="submit" disabled={saving}>{submitLabel}</button>
+            {mode === 'edit' && selectedItem ? (
+              <button className="danger-button" type="button" onClick={() => void handleDelete()} disabled={saving}>
+                Supprimer
+              </button>
+            ) : null}
           </div>
-        </article>
-      ) : null}
+
+          {mode === 'edit' && selectedItem ? (
+            <div className="button-row">
+              <button className="secondary-button" type="button" onClick={() => void handleQuickAction('prise')} disabled={actionPending || saving}>
+                Enregistrer une prise
+              </button>
+              <button className="secondary-button" type="button" onClick={() => void handleQuickAction('ajout')} disabled={actionPending || saving}>
+                Ajouter du stock
+              </button>
+            </div>
+          ) : null}
+        </form>
+      </article>
     </section>
   )
 }
@@ -678,7 +949,7 @@ function GestionPage({ initialTab = 'inventaire' }: { initialTab?: GestionTab })
 }
 
 function ProfilesPage() {
-  const [profileRows, setProfileRows] = useState<Profile[]>(profiles)
+  const [profileRows, setProfileRows] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -691,10 +962,10 @@ function ProfilesPage() {
     notes: '',
   })
 
-  function mapProfile(row: ProfileApiRow): Profile {
+  function mapProfile(row: ProfileApiRow, medicinesByProfile: Map<number, number>): Profile {
     return {
       ...row,
-      medicines: inventory.filter((item) => item.profile === row.name).length,
+      medicines: medicinesByProfile.get(row.id) ?? 0,
     }
   }
 
@@ -703,8 +974,23 @@ function ProfilesPage() {
     setError(null)
 
     try {
-      const rows = await fetchJson<ProfileApiRow[]>('/api/profiles')
-      setProfileRows(rows.map(mapProfile))
+      const [rows, inventoryRows] = await Promise.all([
+        fetchJson<ProfileApiRow[]>('/api/profiles'),
+        fetchJson<InventoryApiRow[]>('/api/inventory'),
+      ])
+
+      const medicinesByProfile = new Map<number, number>()
+
+      for (const item of inventoryRows) {
+        if (item.profileId === null) {
+          continue
+        }
+
+        const current = medicinesByProfile.get(item.profileId) ?? 0
+        medicinesByProfile.set(item.profileId, current + 1)
+      }
+
+      setProfileRows(rows.map((row) => mapProfile(row, medicinesByProfile)))
     } catch {
       setError('Impossible de charger les profils. Verifie que le backend tourne sur le port 4000.')
     } finally {
@@ -748,23 +1034,20 @@ function ProfilesPage() {
 
     try {
       if (editingId === null) {
-        const created = await fetchJson<ProfileApiRow>('/api/profiles', {
+        await fetchJson<ProfileApiRow>('/api/profiles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        setProfileRows((current) => [mapProfile(created), ...current])
       } else {
-        const updated = await fetchJson<ProfileApiRow>(`/api/profiles/${editingId}`, {
+        await fetchJson<ProfileApiRow>(`/api/profiles/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         })
-        setProfileRows((current) => current.map((profile) => (
-          profile.id === updated.id ? mapProfile(updated) : profile
-        )))
       }
 
+      await loadProfiles()
       resetForm()
     } catch {
       setError('Echec de sauvegarde du profil.')
@@ -790,7 +1073,7 @@ function ProfilesPage() {
 
     try {
       await fetchJson<void>(`/api/profiles/${profileId}`, { method: 'DELETE' })
-      setProfileRows((current) => current.filter((profile) => profile.id !== profileId))
+      await loadProfiles()
       if (editingId === profileId) {
         resetForm()
       }
@@ -936,6 +1219,7 @@ function HistoryPage() {
   const [type, setType] = useState('all')
   const [profileFilter, setProfileFilter] = useState('all')
   const [historyRows, setHistoryRows] = useState<Movement[]>([])
+  const [profileOptions, setProfileOptions] = useState<Array<{ id: number, name: string }>>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -945,10 +1229,14 @@ function HistoryPage() {
       setLoading(true)
 
       try {
-        const rows = await fetchJson<MovementApiRow[]>('/api/history')
+        const [rows, profileRows] = await Promise.all([
+          fetchJson<MovementApiRow[]>('/api/history'),
+          fetchJson<ProfileApiRow[]>('/api/profiles'),
+        ])
 
         if (mounted) {
           setHistoryRows(rows.map(mapMovement))
+          setProfileOptions(profileRows.map((p) => ({ id: p.id, name: p.name })))
         }
       } finally {
         if (mounted) {
@@ -999,7 +1287,7 @@ function HistoryPage() {
             aria-label="Filtrer l historique par profil"
           >
             <option value="all">Tous les profils</option>
-            {profiles.map((profile) => (
+            {profileOptions.map((profile) => (
               <option key={profile.id} value={profile.name}>{profile.name}</option>
             ))}
           </select>
@@ -1011,7 +1299,7 @@ function HistoryPage() {
             <div key={movement.id} className="movement-row movement-row-large">
               <div>
                 <strong>{movement.medicine}</strong>
-                <p className="muted">{movement.profile} ┬À {movement.type}</p>
+                <p className="muted">{movement.profile} - {movement.type}</p>
               </div>
               <div className="align-right">
                 <strong>{movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}</strong>
@@ -1043,7 +1331,7 @@ function AssistantPage() {
     'Prochain renouvellement',
   ]
 
-  function sendMessage(message: string) {
+  async function sendMessage(message: string) {
     const trimmedMessage = message.trim()
 
     if (!trimmedMessage) {
@@ -1056,18 +1344,35 @@ function AssistantPage() {
     ])
     setInput('')
 
-    window.setTimeout(() => {
+    try {
+      const result = await fetchJson<{ reply: string, disclaimer: string }>('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: trimmedMessage }),
+      })
+
       startTransition(() => {
         setMessages((current) => [
           ...current,
           {
             id: Date.now() + 1,
             role: 'assistant',
-            content: 'Reponse simulee pour le socle frontend. La vraie integration passera ensuite par le backend Node et l assistant local.',
+            content: `${result.reply}\n\n_${result.disclaimer}_`,
           },
         ])
       })
-    }, 700)
+    } catch {
+      startTransition(() => {
+        setMessages((current) => [
+          ...current,
+          {
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: 'Assistant indisponible. Verifie que le backend tourne sur le port 4000.',
+          },
+        ])
+      })
+    }
   }
 
   return (
@@ -1082,7 +1387,7 @@ function AssistantPage() {
 
         <div className="suggestion-row">
           {suggestions.map((suggestion) => (
-            <button key={suggestion} type="button" className="secondary-button" onClick={() => sendMessage(suggestion)}>
+            <button key={suggestion} type="button" className="secondary-button" onClick={() => void sendMessage(suggestion)}>
               {suggestion}
             </button>
           ))}
@@ -1101,7 +1406,7 @@ function AssistantPage() {
           className="chat-form"
           onSubmit={(event) => {
             event.preventDefault()
-            sendMessage(input)
+            void sendMessage(input)
           }}
         >
           <input
