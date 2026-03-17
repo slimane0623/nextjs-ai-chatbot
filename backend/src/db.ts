@@ -406,7 +406,11 @@ export function deleteProfile(id: number) {
   return result.changes > 0
 }
 
-export function listInventory(search = '', status?: InventoryStatus) {
+export function listInventory(
+  search = '',
+  status?: InventoryStatus,
+  options?: { limit?: number; offset?: number; sort?: string; order?: 'asc' | 'desc' },
+) {
   const inventory = db.prepare(`
     SELECT
       stock_items.id,
@@ -429,7 +433,7 @@ export function listInventory(search = '', status?: InventoryStatus) {
     ORDER BY medicines.name ASC
   `).all() as InventoryRow[]
 
-  return inventory.filter((item) => {
+  let filtered = inventory.filter((item) => {
     const matchesSearch = `${item.medicineName} ${item.dosage} ${item.profileName ?? ''}`
       .toLowerCase()
       .includes(search.toLowerCase())
@@ -444,6 +448,29 @@ export function listInventory(search = '', status?: InventoryStatus) {
 
     return getInventoryStatus(item) === status
   })
+
+  const total = filtered.length
+
+  // Sort if requested
+  const allowedSorts = ['medicineName', 'quantity', 'expiryDate'] as const
+  const sortField = options?.sort as (typeof allowedSorts)[number] | undefined
+  if (sortField && allowedSorts.includes(sortField)) {
+    const dir = options?.order === 'desc' ? -1 : 1
+    filtered.sort((a, b) => {
+      const va = a[sortField] ?? ''
+      const vb = b[sortField] ?? ''
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir
+      return String(va).localeCompare(String(vb)) * dir
+    })
+  }
+
+  // Paginate if requested
+  if (options?.limit != null) {
+    const offset = options.offset ?? 0
+    filtered = filtered.slice(offset, offset + options.limit)
+  }
+
+  return { items: filtered, total }
 }
 
 function getInventoryItemById(stockItemId: number) {
@@ -792,7 +819,7 @@ export function markAllNotificationsAsRead() {
 }
 
 export function listAlerts() {
-  const inventory = listInventory()
+  const { items: inventory } = listInventory()
 
   const alerts = inventory.flatMap<AlertRow>((item) => {
     const descriptor = getAlertDescriptor(item)
@@ -814,7 +841,7 @@ export function listAlerts() {
 }
 
 export function getDashboard() {
-  const inventory = listInventory()
+  const { items: inventory } = listInventory()
   const allMovements = listMovements()
   const movements = allMovements.slice(0, 10)
 
@@ -851,7 +878,7 @@ function backfillNotificationsIfEmpty() {
     return
   }
 
-  for (const item of listInventory()) {
+  for (const item of listInventory().items) {
     createNotificationForInventoryItem(item)
   }
 }

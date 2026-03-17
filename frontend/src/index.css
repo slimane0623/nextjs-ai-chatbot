@@ -859,28 +859,39 @@ p {
 
 .bottom-nav {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  left: 1rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: none;
-  gap: 0.5rem;
-  padding: 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.92);
+  gap: 0.25rem;
+  padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
+  z-index: 100;
 }
 
 .bottom-link {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.5rem 0.25rem;
+  border-radius: 10px;
   text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease;
 }
 
 .bottom-link-active {
   background: rgba(20, 133, 109, 0.12);
   color: var(--accent-strong);
 }
+
+/* ===== Sprint 5 – Mobile First responsive ===== */
 
 @media (max-width: 980px) {
   .app-shell {
@@ -892,20 +903,24 @@ p {
   }
 
   .main-panel {
-    padding-bottom: 6rem;
+    padding: 0 0.75rem 1rem;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .inventory-layout {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-lower,
-  .stats-grid {
+  .dashboard-lower {
     grid-template-columns: 1fr;
   }
 
   .notifications-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .profiles-crud-layout {
@@ -915,18 +930,79 @@ p {
   .bottom-nav {
     display: flex;
   }
+
+  .chart-card {
+    min-height: 260px;
+  }
+
+  .chart-wrap {
+    height: 220px;
+  }
+
+  .assistant-card {
+    min-height: 60vh;
+  }
+
+  .chat-list {
+    min-height: 300px;
+  }
+
+  .chat-form {
+    position: sticky;
+    bottom: 0;
+    padding: 0.75rem 0;
+    background: var(--surface);
+    z-index: 10;
+  }
+
+  .profile-item {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .profile-item .button-row {
+    width: 100%;
+  }
+
+  .profile-item .button-row button {
+    flex: 1;
+  }
+
+  .alert-severity-counts {
+    flex-wrap: wrap;
+  }
+
+  .section-heading {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .inventory-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inventory-toolbar .primary-button {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
   .main-panel {
-    padding: 1rem;
-    padding-bottom: 6rem;
+    padding: 0 0.5rem 1rem;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .topbar,
-  .topbar-actions {
+  .topbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .topbar-actions {
+    flex-direction: row;
+    justify-content: flex-end;
   }
 
   .detail-grid {
@@ -943,5 +1019,113 @@ p {
 
   .notification-card {
     flex-direction: column;
+  }
+
+  .toolbar-row {
+    flex-direction: column;
+  }
+
+  .toolbar-row .search-input,
+  .toolbar-row .select-input {
+    width: 100%;
+  }
+
+  .button-row {
+    flex-direction: column;
+  }
+
+  .button-row button {
+    width: 100%;
+  }
+
+  .suggestion-row {
+    flex-direction: column;
+  }
+
+  .suggestion-row button {
+    width: 100%;
+  }
+
+  .card {
+    padding: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .stat-card strong {
+    font-size: 1.4rem;
+  }
+
+  .monthly-stat-value {
+    font-size: 1.8rem;
+  }
+
+  .alert-row,
+  .movement-row,
+  .profile-row {
+    padding: 0.75rem;
+  }
+
+  .chat-bubble {
+    max-width: 100%;
+    padding: 0.85rem;
+    border-radius: 16px;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .danger-button {
+    padding: 0.95rem 1rem;
+    font-size: 0.95rem;
+  }
+
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-row {
+    gap: 0.35rem;
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-card strong {
+    font-size: 1.2rem;
+  }
+
+  .kpi-icon {
+    font-size: 1.1rem;
+  }
+
+  .eyebrow {
+    font-size: 0.65rem;
+  }
+
+  .page-grid {
+    gap: 0.65rem;
+  }
+
+  .topbar h2 {
+    font-size: 1.1rem;
+  }
+
+  .search-input,
+  .select-input {
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+
+  .chat-list {
+    min-height: 200px;
   }
 }

@@ -500,11 +500,13 @@ function DashboardPage() {
       setError(null)
 
       try {
-        const [dashboard, inventoryRows, profileRows] = await Promise.all([
+        const [dashboard, inventoryResult, profileRows] = await Promise.all([
           fetchJson<DashboardApiPayload>('/api/dashboard'),
-          fetchJson<InventoryApiRow[]>('/api/inventory'),
+          fetchJson<{ items: InventoryApiRow[]; total: number }>('/api/inventory'),
           fetchJson<ProfileApiRow[]>('/api/profiles'),
         ])
+
+        const inventoryRows = inventoryResult.items
 
         if (!mounted) {
           return
@@ -772,12 +774,12 @@ function InventoryPage() {
       const query = params.toString()
       const inventoryPath = query ? `/api/inventory?${query}` : '/api/inventory'
 
-      const [inventoryRows, profileRows] = await Promise.all([
-        fetchJson<InventoryApiRow[]>(inventoryPath),
+      const [inventoryResult, profileRows] = await Promise.all([
+        fetchJson<{ items: InventoryApiRow[]; total: number }>(inventoryPath),
         fetchJson<ProfileApiRow[]>('/api/profiles'),
       ])
 
-      const mapped = inventoryRows.map(mapInventory)
+      const mapped = inventoryResult.items.map(mapInventory)
 
       setItems(mapped)
       setProfileOptions(profileRows.map((row) => ({ id: row.id, name: row.name })))
@@ -1192,14 +1194,14 @@ function ProfilesPage() {
     setError(null)
 
     try {
-      const [rows, inventoryRows] = await Promise.all([
+      const [rows, inventoryResult] = await Promise.all([
         fetchJson<ProfileApiRow[]>('/api/profiles'),
-        fetchJson<InventoryApiRow[]>('/api/inventory'),
+        fetchJson<{ items: InventoryApiRow[]; total: number }>('/api/inventory'),
       ])
 
       const medicinesByProfile = new Map<number, number>()
 
-      for (const item of inventoryRows) {
+      for (const item of inventoryResult.items) {
         if (item.profileId === null) {
           continue
         }
