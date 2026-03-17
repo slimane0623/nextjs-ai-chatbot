@@ -6,6 +6,7 @@ import { historyRouter } from './history/history.routes.js'
 import { inventoryRouter } from './inventory/inventory.routes.js'
 import { notificationsRouter } from './notifications/notifications.routes.js'
 import { profilesRouter } from './profiles/profiles.routes.js'
+import { searchRouter } from './search/search.routes.js'
 
 export function registerApiRoutes(app: Express) {
   const apiRouter = Router()
@@ -15,6 +16,7 @@ export function registerApiRoutes(app: Express) {
   apiRouter.use('/profiles', profilesRouter)
   apiRouter.use('/inventory', inventoryRouter)
   apiRouter.use('/history', historyRouter)
+  apiRouter.use('/search', searchRouter)
   apiRouter.use('/notifications', notificationsRouter)
   apiRouter.use('/chat', chatRouter)
 

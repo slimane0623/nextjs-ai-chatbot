@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type FormEvent } from 'react'
+﻿import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   Bar,
   BarChart,
@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 type Profile = {
   id: number
@@ -184,6 +184,27 @@ type DashboardApiPayload = {
   totalMovementsThisMonth: number
 }
 
+type GlobalSearchApiResponse = {
+  query: string
+  filters: {
+    categories: Array<'inventory' | 'profiles' | 'history'>
+    inventoryStatus: 'ok' | 'critical' | 'expiring' | 'out' | null
+    movementType: 'prise' | 'ajout' | 'alerte' | null
+    profileId: number | null
+    limitPerCategory: number
+  }
+  totals: {
+    inventory: number
+    profiles: number
+    history: number
+  }
+  results: {
+    inventory: InventoryApiRow[]
+    profiles: ProfileApiRow[]
+    history: MovementApiRow[]
+  }
+}
+
 const navigation = [
   { to: '/', label: 'Tableau de bord', shortLabel: 'Dashboard' },
   { to: '/inventaire', label: 'Inventaire', shortLabel: 'Inventaire' },
@@ -352,8 +373,18 @@ function getNotificationKindLabel(kind: NotificationApiRow['kind']) {
 
 function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0)
   const [notificationRefreshToken, setNotificationRefreshToken] = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchCategory, setSearchCategory] = useState<'all' | 'inventory' | 'profiles' | 'history'>('all')
+  const [searchInventoryStatus, setSearchInventoryStatus] = useState<'all' | 'ok' | 'critical' | 'expiring' | 'out'>('all')
+  const [searchMovementType, setSearchMovementType] = useState<'all' | 'prise' | 'ajout' | 'alerte'>('all')
+  const [isSearching, setIsSearching] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<GlobalSearchApiResponse | null>(null)
+
   const pageTitleByPath: Record<string, string> = {
     '/': 'Tableau de bord',
     '/inventaire': 'Inventaire',
@@ -383,18 +414,69 @@ function Layout() {
     }
 
     void loadUnreadNotifications()
-    const timerId = window.setInterval(() => {
+    const timerId = globalThis.setInterval(() => {
       void loadUnreadNotifications()
     }, 15000)
 
     return () => {
       active = false
-      window.clearInterval(timerId)
+      globalThis.clearInterval(timerId)
     }
   }, [location.pathname, notificationRefreshToken])
 
+  useEffect(() => {
+    setIsSearchOpen(false)
+    setSearchError(null)
+  }, [location.pathname])
+
   function handleNotificationsUpdated() {
     setNotificationRefreshToken((current) => current + 1)
+  }
+
+  async function runGlobalSearch(queryOverride?: string) {
+    const query = (queryOverride ?? searchInput).trim()
+
+    if (!query) {
+      setIsSearchOpen(false)
+      setSearchResults(null)
+      setSearchError(null)
+      return
+    }
+
+    setIsSearching(true)
+    setIsSearchOpen(true)
+    setSearchError(null)
+
+    try {
+      const params = new URLSearchParams()
+      params.set('q', query)
+      params.set('limit', '6')
+
+      if (searchCategory !== 'all') {
+        params.set('categories', searchCategory)
+      }
+
+      if (searchInventoryStatus !== 'all') {
+        params.set('inventoryStatus', searchInventoryStatus)
+      }
+
+      if (searchMovementType !== 'all') {
+        params.set('movementType', searchMovementType)
+      }
+
+      const payload = await fetchJson<GlobalSearchApiResponse>(`/api/search?${params.toString()}`)
+      setSearchResults(payload)
+    } catch {
+      setSearchError('Recherche indisponible temporairement.')
+      setSearchResults(null)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  function openCategory(path: string) {
+    setIsSearchOpen(false)
+    void navigate(path)
   }
 
   return (
@@ -438,7 +520,42 @@ function Layout() {
             <h2>{pageTitle}</h2>
             <p className="muted">5 mars 2026</p>
           </div>
-          <div className="topbar-actions">
+          <div className="topbar-actions topbar-actions-search">
+            <form
+              className="global-search-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void runGlobalSearch()
+              }}
+            >
+              <input
+                className="search-input global-search-input"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                onFocus={() => {
+                  if (searchResults) {
+                    setIsSearchOpen(true)
+                  }
+                }}
+                placeholder="Recherche globale: inventaire, profils, historique"
+                aria-label="Recherche globale"
+              />
+              <select
+                className="select-input global-search-select"
+                value={searchCategory}
+                onChange={(event) => setSearchCategory(event.target.value as 'all' | 'inventory' | 'profiles' | 'history')}
+                aria-label="Filtrer la categorie de recherche"
+              >
+                <option value="all">Toutes categories</option>
+                <option value="inventory">Inventaire</option>
+                <option value="profiles">Profils</option>
+                <option value="history">Historique</option>
+              </select>
+              <button className="secondary-button" type="submit" disabled={isSearching || !searchInput.trim()}>
+                {isSearching ? 'Recherche...' : 'Rechercher'}
+              </button>
+            </form>
+
             <NavLink
               to="/notifications"
               className={({ isActive }) => (isActive ? 'notification-pill notification-pill-active' : 'notification-pill')}
@@ -448,6 +565,103 @@ function Layout() {
             </NavLink>
           </div>
         </header>
+
+        {isSearchOpen ? (
+          <article className="card global-search-panel">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Recherche globale</p>
+                <h3>Resultats classes par categorie</h3>
+              </div>
+              <div className="toolbar-row">
+                <select
+                  className="select-input global-filter-select"
+                  value={searchInventoryStatus}
+                  onChange={(event) => setSearchInventoryStatus(event.target.value as 'all' | 'ok' | 'critical' | 'expiring' | 'out')}
+                  aria-label="Filtre statut inventaire"
+                >
+                  <option value="all">Inventaire: tous statuts</option>
+                  <option value="ok">Inventaire: OK</option>
+                  <option value="critical">Inventaire: critique</option>
+                  <option value="expiring">Inventaire: peremption</option>
+                  <option value="out">Inventaire: rupture</option>
+                </select>
+                <select
+                  className="select-input global-filter-select"
+                  value={searchMovementType}
+                  onChange={(event) => setSearchMovementType(event.target.value as 'all' | 'prise' | 'ajout' | 'alerte')}
+                  aria-label="Filtre type historique"
+                >
+                  <option value="all">Historique: tous types</option>
+                  <option value="prise">Historique: prises</option>
+                  <option value="ajout">Historique: ajouts</option>
+                  <option value="alerte">Historique: alertes</option>
+                </select>
+                <button className="secondary-button" type="button" onClick={() => void runGlobalSearch()} disabled={isSearching}>
+                  Appliquer filtres
+                </button>
+                <button className="secondary-button" type="button" onClick={() => setIsSearchOpen(false)}>
+                  Fermer
+                </button>
+              </div>
+            </div>
+
+            {searchError ? <p className="error-text">{searchError}</p> : null}
+            {isSearching ? <p>Recherche en cours...</p> : null}
+
+            {!isSearching && searchResults ? (
+              <div className="global-search-results">
+                <section className="global-search-section">
+                  <div className="global-search-heading">
+                    <h4>Inventaire ({searchResults.totals.inventory})</h4>
+                    <button className="secondary-button" type="button" onClick={() => openCategory('/inventaire')}>Ouvrir</button>
+                  </div>
+                  <div className="stack-list">
+                    {searchResults.results.inventory.map((item) => (
+                      <button key={`inventory-${item.id}`} type="button" className="search-result-item" onClick={() => openCategory('/inventaire')}>
+                        <strong>{item.medicineName}</strong>
+                        <p className="muted">{item.dosage} - {item.profileName ?? 'Foyer'} - {item.quantity} {item.unit}</p>
+                      </button>
+                    ))}
+                    {searchResults.results.inventory.length === 0 ? <p className="muted">Aucun resultat inventaire.</p> : null}
+                  </div>
+                </section>
+
+                <section className="global-search-section">
+                  <div className="global-search-heading">
+                    <h4>Profils ({searchResults.totals.profiles})</h4>
+                    <button className="secondary-button" type="button" onClick={() => openCategory('/profils')}>Ouvrir</button>
+                  </div>
+                  <div className="stack-list">
+                    {searchResults.results.profiles.map((profile) => (
+                      <button key={`profile-${profile.id}`} type="button" className="search-result-item" onClick={() => openCategory('/profils')}>
+                        <strong>{profile.name}</strong>
+                        <p className="muted">{profile.role} - Allergies: {profile.allergies || 'Aucune'}</p>
+                      </button>
+                    ))}
+                    {searchResults.results.profiles.length === 0 ? <p className="muted">Aucun resultat profil.</p> : null}
+                  </div>
+                </section>
+
+                <section className="global-search-section">
+                  <div className="global-search-heading">
+                    <h4>Historique ({searchResults.totals.history})</h4>
+                    <button className="secondary-button" type="button" onClick={() => openCategory('/historique')}>Ouvrir</button>
+                  </div>
+                  <div className="stack-list">
+                    {searchResults.results.history.map((movement) => (
+                      <button key={`history-${movement.id}`} type="button" className="search-result-item" onClick={() => openCategory('/historique')}>
+                        <strong>{movement.medicineName}</strong>
+                        <p className="muted">{movement.type} - {movement.profileName ?? 'Foyer'} - {formatDateTime(movement.occurredAt)}</p>
+                      </button>
+                    ))}
+                    {searchResults.results.history.length === 0 ? <p className="muted">Aucun resultat historique.</p> : null}
+                  </div>
+                </section>
+              </div>
+            ) : null}
+          </article>
+        ) : null}
 
         <Routes>
           <Route path="/" element={<DashboardPage />} />
@@ -756,7 +970,7 @@ function InventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionPending, setActionPending] = useState(false)
 
-  async function loadInventory(preferredId?: number | null) {
+  const loadInventory = useCallback(async (preferredId?: number | null) => {
     setLoading(true)
     setError(null)
 
@@ -809,11 +1023,11 @@ function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [mode, search, selectedId, status])
 
   useEffect(() => {
     void loadInventory()
-  }, [search, status])
+  }, [loadInventory])
 
   const selectedItem = items.find((item) => item.id === selectedId) ?? null
 
@@ -1182,14 +1396,14 @@ function ProfilesPage() {
     notes: '',
   })
 
-  function mapProfile(row: ProfileApiRow, medicinesByProfile: Map<number, number>): Profile {
+  const mapProfile = useCallback((row: ProfileApiRow, medicinesByProfile: Map<number, number>): Profile => {
     return {
       ...row,
       medicines: medicinesByProfile.get(row.id) ?? 0,
     }
-  }
+  }, [])
 
-  async function loadProfiles() {
+  const loadProfiles = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -1216,11 +1430,11 @@ function ProfilesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [mapProfile])
 
   useEffect(() => {
     void loadProfiles()
-  }, [])
+  }, [loadProfiles])
 
   function resetForm() {
     setForm({

@@ -115,6 +115,38 @@ export type NotificationFilters = {
   status?: 'read' | 'unread'
 }
 
+export type GlobalSearchCategory = 'inventory' | 'profiles' | 'history'
+
+export type GlobalSearchFilters = {
+  query: string
+  categories?: GlobalSearchCategory[]
+  inventoryStatus?: InventoryStatus
+  movementType?: MovementType
+  profileId?: number
+  limitPerCategory?: number
+}
+
+export type GlobalSearchResult = {
+  query: string
+  filters: {
+    categories: GlobalSearchCategory[]
+    inventoryStatus: InventoryStatus | null
+    movementType: MovementType | null
+    profileId: number | null
+    limitPerCategory: number
+  }
+  totals: {
+    inventory: number
+    profiles: number
+    history: number
+  }
+  results: {
+    inventory: InventoryRow[]
+    profiles: ProfileRow[]
+    history: MovementRow[]
+  }
+}
+
 const dataDir = path.join(process.cwd(), 'data')
 const dbPath = path.join(dataDir, 'medistock.db')
 
@@ -722,6 +754,103 @@ export function listMovements(filters: MovementFilters = {}) {
     ${whereClause}
     ORDER BY movements.occurred_at DESC
   `).all(...params) as MovementRow[]
+}
+
+export function searchGlobal(filters: GlobalSearchFilters): GlobalSearchResult {
+  const normalizedQuery = filters.query.trim().toLowerCase()
+  const categories: GlobalSearchCategory[] = filters.categories?.length
+    ? filters.categories
+    : ['inventory', 'profiles', 'history']
+  const categorySet = new Set(categories)
+  const limitPerCategory = Math.max(1, Math.min(50, filters.limitPerCategory ?? 8))
+  let inventoryTotal = 0
+  let profilesTotal = 0
+  let historyTotal = 0
+
+  let inventoryMatches: InventoryRow[] = []
+  let profileMatches: ProfileRow[] = []
+  let historyMatches: MovementRow[] = []
+
+  if (categorySet.has('inventory')) {
+    const inventory = listInventory('', filters.inventoryStatus).items.filter((item) => {
+      const matchesProfile = typeof filters.profileId === 'number' ? item.profileId === filters.profileId : true
+
+      if (!matchesProfile) {
+        return false
+      }
+
+      if (!normalizedQuery) {
+        return true
+      }
+
+      return `${item.medicineName} ${item.dosage} ${item.form} ${item.profileName ?? ''} ${item.location} ${item.notes}`
+        .toLowerCase()
+        .includes(normalizedQuery)
+    })
+
+    inventoryTotal = inventory.length
+    inventoryMatches = inventory.slice(0, limitPerCategory)
+  }
+
+  if (categorySet.has('profiles')) {
+    const profiles = listProfiles().filter((profile) => {
+      const matchesProfile = typeof filters.profileId === 'number' ? profile.id === filters.profileId : true
+
+      if (!matchesProfile) {
+        return false
+      }
+
+      if (!normalizedQuery) {
+        return true
+      }
+
+      return `${profile.name} ${profile.role} ${profile.allergies} ${profile.notes}`
+        .toLowerCase()
+        .includes(normalizedQuery)
+    })
+
+    profilesTotal = profiles.length
+    profileMatches = profiles.slice(0, limitPerCategory)
+  }
+
+  if (categorySet.has('history')) {
+    const movements = listMovements({
+      type: filters.movementType,
+      profileId: filters.profileId,
+    }).filter((movement) => {
+      if (!normalizedQuery) {
+        return true
+      }
+
+      return `${movement.medicineName} ${movement.profileName ?? ''} ${movement.type} ${movement.note}`
+        .toLowerCase()
+        .includes(normalizedQuery)
+    })
+
+    historyTotal = movements.length
+    historyMatches = movements.slice(0, limitPerCategory)
+  }
+
+  return {
+    query: filters.query,
+    filters: {
+      categories,
+      inventoryStatus: filters.inventoryStatus ?? null,
+      movementType: filters.movementType ?? null,
+      profileId: filters.profileId ?? null,
+      limitPerCategory,
+    },
+    totals: {
+      inventory: inventoryTotal,
+      profiles: profilesTotal,
+      history: historyTotal,
+    },
+    results: {
+      inventory: inventoryMatches,
+      profiles: profileMatches,
+      history: historyMatches,
+    },
+  }
 }
 
 function getNotificationById(notificationId: number) {
