@@ -161,6 +161,8 @@ type DashboardApiPayload = {
   }
   alerts: Alert[]
   movements: MovementApiRow[]
+  movementsByType: { prise: number, ajout: number, alerte: number }
+  totalMovementsThisMonth: number
 }
 
 const navigation = [
@@ -392,15 +394,17 @@ function Layout() {
 
 function DashboardPage() {
   const [stats, setStats] = useState([
-    { label: 'Medicaments', value: 0 },
-    { label: 'Stock critique', value: 0 },
-    { label: 'Bientot perimes', value: 0 },
-    { label: 'Ruptures', value: 0 },
+    { label: 'Medicaments', value: 0, icon: '\u{1F48A}', className: 'kpi-total' },
+    { label: 'Stock critique', value: 0, icon: '\u26A0\uFE0F', className: 'kpi-critical' },
+    { label: 'Bientot perimes', value: 0, icon: '\u23F3', className: 'kpi-expiring' },
+    { label: 'Ruptures', value: 0, icon: '\u{1F6AB}', className: 'kpi-out' },
   ])
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([])
   const [recentMovements, setRecentMovements] = useState<Movement[]>([])
   const [chartItems, setChartItems] = useState<InventoryItem[]>([])
   const [dashboardProfiles, setDashboardProfiles] = useState<Profile[]>([])
+  const [movementsByType, setMovementsByType] = useState({ prise: 0, ajout: 0, alerte: 0 })
+  const [totalMovementsThisMonth, setTotalMovementsThisMonth] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -423,14 +427,16 @@ function DashboardPage() {
         }
 
         setStats([
-          { label: 'Medicaments', value: dashboard.stats.totalMedicines },
-          { label: 'Stock critique', value: dashboard.stats.criticalCount },
-          { label: 'Bientot perimes', value: dashboard.stats.expiringCount },
-          { label: 'Ruptures', value: dashboard.stats.outOfStockCount },
+          { label: 'Medicaments', value: dashboard.stats.totalMedicines, icon: '\u{1F48A}', className: 'kpi-total' },
+          { label: 'Stock critique', value: dashboard.stats.criticalCount, icon: '\u26A0\uFE0F', className: 'kpi-critical' },
+          { label: 'Bientot perimes', value: dashboard.stats.expiringCount, icon: '\u23F3', className: 'kpi-expiring' },
+          { label: 'Ruptures', value: dashboard.stats.outOfStockCount, icon: '\u{1F6AB}', className: 'kpi-out' },
         ])
 
         setActiveAlerts(dashboard.alerts)
         setRecentMovements(dashboard.movements.map(mapMovement))
+        setMovementsByType(dashboard.movementsByType ?? { prise: 0, ajout: 0, alerte: 0 })
+        setTotalMovementsThisMonth(dashboard.totalMovementsThisMonth ?? 0)
 
         const mappedInventory = inventoryRows.map(mapInventory)
         setChartItems(mappedInventory)
@@ -468,100 +474,183 @@ function DashboardPage() {
     }
   }, [])
 
+  const criticalAlerts = activeAlerts.filter((a) => a.severity === 'critical')
+  const warningAlerts = activeAlerts.filter((a) => a.severity === 'warning')
+
+  const groupedMovements: Array<{ date: string, items: Movement[] }> = []
+  for (const m of recentMovements) {
+    const dateKey = m.occurredAt.split(',')[0]?.trim() ?? m.occurredAt
+    const existing = groupedMovements.find((g) => g.date === dateKey)
+    if (existing) {
+      existing.items.push(m)
+    } else {
+      groupedMovements.push({ date: dateKey, items: [m] })
+    }
+  }
+
+  const movementTypeLabel: Record<string, string> = { prise: 'Prise', ajout: 'Ajout', alerte: 'Alerte' }
+
   return (
     <section className="page-grid">
       <div className="stats-grid">
         {stats.map((stat) => (
-          <article key={stat.label} className="card stat-card">
-            <span className="eyebrow">Vue globale</span>
+          <article key={stat.label} className={`card stat-card ${stat.className}`}>
+            <div className="kpi-header">
+              <span className="kpi-icon">{stat.icon}</span>
+              <span className="eyebrow">Vue globale</span>
+            </div>
             <strong>{stat.value}</strong>
             <p>{stat.label}</p>
           </article>
         ))}
       </div>
 
-      <article className="card chart-card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Dashboard</p>
-            <h3>Niveaux de stock</h3>
-            <p className="muted">Vue de pilotage pour le gestionnaire principal et les aidants familiaux.</p>
-          </div>
-        </div>
-        <div className="chart-wrap">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartItems}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Alertes</p>
-            <h3>Alertes actives</h3>
-          </div>
-        </div>
-        <div className="stack-list">
-          {activeAlerts.map((alert) => (
-            <div key={alert.id} className={`alert-row alert-${alert.severity}`}>
-              <strong>{alert.title}</strong>
-              <span>{alert.description}</span>
+      <div className="dashboard-lower">
+        <article className="card chart-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Dashboard</p>
+              <h3>Niveaux de stock</h3>
+              <p className="muted">Vue de pilotage pour le gestionnaire principal et les aidants familiaux.</p>
             </div>
-          ))}
-          {!loading && activeAlerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
-        </div>
-      </article>
+          </div>
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartItems}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="quantity" fill="var(--accent)" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
 
-      <article className="card">
+        <article className="card monthly-summary-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Ce mois</p>
+              <h3>Activite mensuelle</h3>
+            </div>
+          </div>
+          <div className="monthly-stats">
+            <div className="monthly-stat">
+              <span className="monthly-stat-value">{totalMovementsThisMonth}</span>
+              <span className="muted">Mouvements</span>
+            </div>
+            <div className="monthly-breakdown">
+              <div className="monthly-type">
+                <span className="movement-badge movement-badge-prise">Prises</span>
+                <strong>{movementsByType.prise}</strong>
+              </div>
+              <div className="monthly-type">
+                <span className="movement-badge movement-badge-ajout">Ajouts</span>
+                <strong>{movementsByType.ajout}</strong>
+              </div>
+              <div className="monthly-type">
+                <span className="movement-badge movement-badge-alerte">Alertes</span>
+                <strong>{movementsByType.alerte}</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div className="dashboard-lower">
+        <article className="card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Alertes</p>
+              <h3>Alertes actives
+                {activeAlerts.length > 0 && <span className="alert-count-badge">{activeAlerts.length}</span>}
+              </h3>
+            </div>
+            {activeAlerts.length > 0 && (
+              <div className="alert-severity-counts">
+                {criticalAlerts.length > 0 && <span className="pill pill-critical">{criticalAlerts.length} critique{criticalAlerts.length > 1 ? 's' : ''}</span>}
+                {warningAlerts.length > 0 && <span className="pill pill-warning">{warningAlerts.length} attention</span>}
+              </div>
+            )}
+          </div>
+          <div className="stack-list">
+            {activeAlerts.map((alert) => (
+              <div key={alert.id} className={`alert-row alert-${alert.severity}`}>
+                <div className="alert-content">
+                  <span className="alert-icon">{alert.severity === 'critical' ? '\u{1F534}' : '\u{1F7E0}'}</span>
+                  <div>
+                    <strong>{alert.title}</strong>
+                    <p className="muted">{alert.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {!loading && activeAlerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Famille</p>
+              <h3>Profils</h3>
+            </div>
+          </div>
+          <div className="stack-list">
+            {dashboardProfiles.map((profile) => (
+              <div key={profile.id} className="profile-row">
+                <div>
+                  <strong>{profile.name}</strong>
+                  <p className="muted">{profile.role}</p>
+                </div>
+                <span className="pill">{profile.medicines} med.</span>
+              </div>
+            ))}
+            {!loading && dashboardProfiles.length === 0 ? <p className="muted">Aucun profil disponible.</p> : null}
+          </div>
+        </article>
+      </div>
+
+      <article className="card timeline-card">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Suivi</p>
             <h3>Derniers mouvements</h3>
           </div>
         </div>
-        <div className="stack-list">
-          {recentMovements.slice(0, 5).map((movement) => (
-            <div key={movement.id} className="movement-row">
-              <div>
-                <strong>{movement.medicine}</strong>
-                <p className="muted">{movement.profile}</p>
+        {groupedMovements.length > 0 ? (
+          <div className="timeline">
+            {groupedMovements.map((group) => (
+              <div key={group.date} className="timeline-group">
+                <div className="timeline-date-label">{group.date}</div>
+                <div className="timeline-items">
+                  {group.items.map((movement) => (
+                    <div key={movement.id} className="timeline-item">
+                      <div className="timeline-dot" />
+                      <div className="timeline-content">
+                        <div className="timeline-row">
+                          <span className={`movement-badge movement-badge-${movement.type}`}>
+                            {movementTypeLabel[movement.type] ?? movement.type}
+                          </span>
+                          <strong>{movement.medicine}</strong>
+                          <span className="muted">{movement.profile}</span>
+                        </div>
+                        <div className="timeline-row">
+                          <strong className={movement.quantityDelta > 0 ? 'text-positive' : 'text-negative'}>
+                            {movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}
+                          </strong>
+                          <span className="muted">{movement.occurredAt.split(',')[1]?.trim() ?? ''}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="align-right">
-                <strong>{movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}</strong>
-                <p className="muted">{movement.occurredAt}</p>
-              </div>
-            </div>
-          ))}
-          {!loading && recentMovements.length === 0 ? <p className="muted">Aucun mouvement recent.</p> : null}
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Famille</p>
-            <h3>Profils</h3>
+            ))}
           </div>
-        </div>
-        <div className="stack-list">
-          {dashboardProfiles.map((profile) => (
-            <div key={profile.id} className="profile-row">
-              <div>
-                <strong>{profile.name}</strong>
-                <p className="muted">{profile.role}</p>
-              </div>
-              <span className="pill">{profile.medicines} med.</span>
-            </div>
-          ))}
-          {!loading && dashboardProfiles.length === 0 ? <p className="muted">Aucun profil disponible.</p> : null}
-        </div>
+        ) : !loading ? (
+          <p className="muted">Aucun mouvement recent.</p>
+        ) : null}
         {error ? <p className="error-text">{error}</p> : null}
       </article>
     </section>
