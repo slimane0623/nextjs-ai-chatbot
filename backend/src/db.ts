@@ -607,7 +607,8 @@ export function listAlerts() {
 
 export function getDashboard() {
   const inventory = listInventory()
-  const movements = listMovements().slice(0, 5)
+  const allMovements = listMovements()
+  const movements = allMovements.slice(0, 10)
 
   const stats: DashboardStats = {
     totalMedicines: inventory.length,
@@ -616,9 +617,21 @@ export function getDashboard() {
     outOfStockCount: inventory.filter((item) => getInventoryStatus(item) === 'out').length,
   }
 
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+  const monthlyMovements = allMovements.filter((m) => m.occurredAt >= monthStart)
+  const movementsByType = {
+    prise: monthlyMovements.filter((m) => m.type === 'prise').length,
+    ajout: monthlyMovements.filter((m) => m.type === 'ajout').length,
+    alerte: monthlyMovements.filter((m) => m.type === 'alerte').length,
+  }
+
   return {
     stats,
     alerts: listAlerts(),
     movements,
+    movementsByType,
+    totalMovementsThisMonth: monthlyMovements.length,
   }
 }
