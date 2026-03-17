@@ -8,6 +8,10 @@ inventoryRouter.get('/', (request, response) => {
   const querySchema = z.object({
     search: z.string().optional(),
     status: z.enum(['ok', 'critical', 'expiring', 'out']).optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+    sort: z.enum(['medicineName', 'quantity', 'expiryDate']).optional(),
+    order: z.enum(['asc', 'desc']).optional(),
   })
 
   const parsed = querySchema.safeParse(request.query)
@@ -17,7 +21,8 @@ inventoryRouter.get('/', (request, response) => {
     return
   }
 
-  response.json(listInventory(parsed.data.search ?? '', parsed.data.status))
+  const { search, status, limit, offset, sort, order } = parsed.data
+  response.json(listInventory(search ?? '', status, { limit, offset, sort, order }))
 })
 
 const inventoryBodySchema = z.object({
