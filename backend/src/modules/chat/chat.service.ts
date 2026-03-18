@@ -255,6 +255,11 @@ function formatStatsContext(stats: DashboardStats): string {
 }
 
 type DeterministicIntent =
+  | 'greeting'
+  | 'suggestions'
+  | 'help'
+  | 'thanks'
+  | 'goodbye'
   | 'urgent_renewal'
   | 'next_renewal'
   | 'stock_status'
@@ -279,66 +284,116 @@ function getDaysUntilExpiry(expiryDate: string): number {
   return Math.ceil((date.valueOf() - Date.now()) / (1000 * 60 * 60 * 24))
 }
 
+function hasAnyKeyword(text: string, keywords: string[]): boolean {
+  return keywords.some((keyword) => text.includes(keyword))
+}
+
 function detectDeterministicIntent(message: string): DeterministicIntent {
   const normalizedMessage = normalizeText(message)
+  const wordCount = normalizedMessage.split(' ').filter(Boolean).length
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
+    'que peux tu faire',
+    'aide moi',
+    'help',
+    'commande disponible',
+    'capacites',
+  ])) {
+    return 'help'
+  }
+
+  if (hasAnyKeyword(normalizedMessage, [
+    'suggestion',
+    'suggestions',
+    'proposition',
+    'propose',
+    'que me conseilles',
+    'conseille moi',
+  ])) {
+    return 'suggestions'
+  }
+
+  if (hasAnyKeyword(normalizedMessage, [
+    'merci',
+    'super merci',
+    'thanks',
+  ])) {
+    return 'thanks'
+  }
+
+  if (hasAnyKeyword(normalizedMessage, [
+    'au revoir',
+    'a bientot',
+    'bonne journee',
+    'bye',
+  ])) {
+    return 'goodbye'
+  }
+
+  if (
+    hasAnyKeyword(normalizedMessage, ['bonjour', 'salut', 'bonsoir', 'hello'])
+    && wordCount <= 6
+  ) {
+    return 'greeting'
+  }
+
+  if (hasAnyKeyword(normalizedMessage, [
     'allergie',
     'allergies',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'allergies'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     '10 derniers jours',
     'historique',
     'mouvements',
     'que s est il passe',
     'qu est ce qui s est passe',
     'recemment',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'history'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     'expire',
     'expiration',
     'peremption',
     'perime',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'expiring'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     'prochain renouvel',
     'prochaine renouvel',
     'prochain reappro',
     'prochaine commande',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'next_renewal'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     'stock faible',
     'etat du stock',
     'etat stock',
     'niveau de stock',
     'rupture',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'stock_status'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     'renouvel',
     'urgence',
     'urgent',
     'reappro',
     'reapprovision',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'urgent_renewal'
   }
 
-  if ([
+  if (hasAnyKeyword(normalizedMessage, [
     'est ce que',
     'y a',
     'dans mon stock',
@@ -346,7 +401,7 @@ function detectDeterministicIntent(message: string): DeterministicIntent {
     'combien',
     'disponible',
     'en stock',
-  ].some((keyword) => normalizedMessage.includes(keyword))) {
+  ])) {
     return 'medicine_lookup'
   }
 
@@ -395,6 +450,97 @@ function buildStockStatusReply(items: InventoryRow[]): string {
 
   lines.push('Action: prioriser les ruptures puis les niveaux critiques.')
   return lines.join('\n')
+}
+
+function buildGreetingReply(items: InventoryRow[], movements: MovementRow[]): string {
+  const categorized = categorizeInventory(items)
+  const recentMovement = movements[0]
+  const recentText = recentMovement
+    ? `Dernier mouvement: ${recentMovement.type} sur ${recentMovement.medicineName}.`
+    : 'Aucun mouvement recent enregistre.'
+
+  return [
+    'Bonjour. Je suis ton assistant MediStock.',
+    `Stock actuel: ${items.length} medicaments, ${categorized.outOfStock.length} rupture, ${categorized.critical.length} critique.`,
+    recentText,
+    'Tu peux me demander par exemple:',
+    '- "Stock faible"',
+    '- "Prochain renouvellement"',
+    '- "Qui a des allergies?"',
+    '- "Que s est il passe ces 10 derniers jours?"',
+  ].join('\n')
+}
+
+function buildSuggestionsReply(items: InventoryRow[], movements: MovementRow[], profiles: ProfileRow[]): string {
+  const categorized = categorizeInventory(items)
+  const suggestions: string[] = []
+
+  if (categorized.outOfStock.length > 0) {
+    suggestions.push(`1. Reapprovisionner en priorite: ${categorized.outOfStock.slice(0, 3).map((item) => item.medicineName).join(', ')}.`)
+  }
+
+  if (categorized.critical.length > 0) {
+    suggestions.push(`2. Planifier un renouvellement cette semaine pour: ${categorized.critical.slice(0, 3).map((item) => item.medicineName).join(', ')}.`)
+  }
+
+  const expiring = items
+    .map((item) => {
+      const daysLeft = getDaysUntilExpiry(item.expiryDate)
+      return { item, daysLeft }
+    })
+    .filter((entry) => entry.daysLeft <= 30)
+    .sort((left, right) => left.daysLeft - right.daysLeft)
+
+  if (expiring.length > 0) {
+    const expiringSummary = expiring
+      .slice(0, 2)
+      .map((entry) => `${entry.item.medicineName} (${Math.max(entry.daysLeft, 0)}j)`)
+      .join(', ')
+    suggestions.push(`3. Verifier les expirations proches: ${expiringSummary}.`)
+  }
+
+  if (profiles.some((profile) => profile.allergies.trim().length > 0)) {
+    suggestions.push('4. Revoir les allergies avant chaque nouvelle prise.')
+  }
+
+  if (movements.length > 0) {
+    suggestions.push('5. Consulter l historique recent pour valider les prises/enregistrements.')
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push(
+      '1. Le stock est stable. Fais un controle hebdomadaire de routine.',
+      '2. Mets a jour l inventaire apres chaque prise ou ajout.',
+    )
+  }
+
+  return ['Voici mes suggestions basees sur vos donnees actuelles:', ...suggestions].join('\n')
+}
+
+function buildHelpReply(): string {
+  return [
+    'Je peux t aider sur ces sujets:',
+    '- Renouvellement urgent: "Quels medicaments dois-je renouveler d urgence?"',
+    '- Planning: "Prochain renouvellement"',
+    '- Etat du stock: "Stock faible" ou "Etat du stock"',
+    '- Verification medicament: "Est-ce que X est dans mon stock?"',
+    '- Allergies: "Qui a des allergies?"',
+    '- Expirations: "Combien de temps avant expiration?"',
+    '- Historique: "Que s est il passe ces 10 derniers jours?"',
+  ].join('\n')
+}
+
+function buildThanksReply(items: InventoryRow[]): string {
+  const categorized = categorizeInventory(items)
+  if (categorized.outOfStock.length > 0 || categorized.critical.length > 0) {
+    return 'Avec plaisir. Pense a traiter d abord les ruptures et les stocks critiques.'
+  }
+
+  return 'Avec plaisir. Le stock semble stable pour le moment.'
+}
+
+function buildGoodbyeReply(): string {
+  return 'A bientot. Je reste disponible pour le stock, les allergies et les renouvellements.'
 }
 
 function buildUrgentRenewalReply(items: InventoryRow[]): string {
@@ -571,6 +717,16 @@ function tryBuildDeterministicReply(
   const intent = detectDeterministicIntent(message)
 
   switch (intent) {
+    case 'greeting':
+      return buildGreetingReply(items, movements)
+    case 'suggestions':
+      return buildSuggestionsReply(items, movements, profiles)
+    case 'help':
+      return buildHelpReply()
+    case 'thanks':
+      return buildThanksReply(items)
+    case 'goodbye':
+      return buildGoodbyeReply()
     case 'urgent_renewal':
       return buildUrgentRenewalReply(items)
     case 'next_renewal':
