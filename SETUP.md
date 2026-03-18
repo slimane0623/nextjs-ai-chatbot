@@ -12,7 +12,8 @@ Guide complet pour installer, lancer et tester le projet MediStock AI localement
 - **Navigateur moderne** (Chrome, Firefox, Edge, Safari)
 - **Moteur IA local**: Ollama ou llama.cpp (requis pour le chat local réel)
 
-### Vérifier votre installation :
+### Vérifier votre installation
+
 ```powershell
 node --version    # Doit afficher v24+
 npm --version     # Doit afficher 11+
@@ -22,13 +23,14 @@ npm --version     # Doit afficher 11+
 
 ## 📦 Installation - Étape 1: Dépendances
 
-### Backend :
+### Backend
+
 ```powershell
 cd backend
 npm install
 ```
 
-### Configuration IA locale (Sprint 3) :
+### Configuration IA locale (Sprint 3)
 
 Créez `backend/.env` (ou utilisez les variables d environnement de votre shell) :
 
@@ -45,6 +47,7 @@ CHAT_DISCLAIMER=Assistant local informatif uniquement. Ne remplace pas un avis m
 ```
 
 Parametres Sprint 6 (stabilite locale):
+
 - `CHAT_MAX_CONCURRENT`: limite de requetes IA simultanees pour eviter l epuisement memoire CPU.
 - `CHAT_STATUS_CACHE_TTL_MS`: cache temporaire du statut modele pour reduire les appels repetes `/api/tags` ou `/v1/models`.
 
@@ -68,13 +71,15 @@ $env:CHAT_MODEL="llama3.2:1b"
 $env:CHAT_MODEL="llama2-uncensored:latest"
 ```
 
-### Frontend :
+### Frontend
+
 ```powershell
 cd ../frontend
 npm install
 ```
 
-### Vérification :
+### Vérification
+
 ```powershell
 # Depuis le répertoire racine (PHARMACIE/)
 ls backend/node_modules   # Doit exister
@@ -101,7 +106,7 @@ Vous verrez :
 time=... level=INFO msg="Listening on 127.0.0.1:11434"
 ```
 
-### Option 2 : Ollama déjà installé (sessions futures)
+### Option 2 - Ollama déjà installé (sessions futures)
 
 **Terminal Ollama :**
 ```powershell
@@ -142,11 +147,12 @@ VITE v7.3.1  ready in 1.6 ms
 ➜  Local:     http://127.0.0.1:5173/
 ```
 
-### Option B : Accéder à l'application
+### Option B - Accéder à l'application
 
-Ouvrez votre navigateur : **http://127.0.0.1:5173**
+Ouvrez votre navigateur à `http://127.0.0.1:5173`
 
 Vous verrez :
+
 - 📊 Dashboard (stats, alertes, mouvements)
 - 📦 Inventaire (4 médicaments avec filtres)
 - 👥 Profils (4 membres de la famille)
@@ -157,49 +163,62 @@ Vous verrez :
 
 ## 🧪 Test des Endpoints API
 
-### Vérifier la santé du backend :
+### Vérifier la santé du backend
+
 ```powershell
 Invoke-WebRequest http://localhost:4000/api/health | Select-Object -ExpandProperty Content
 ```
 
 Réponse attendue :
+
 ```json
 {"status":"ok","service":"medistock-api"}
 ```
 
-### Tester les 6 endpoints principaux :
+### Tester les 6 endpoints principaux
 
 #### 1. Dashboard (statistiques)
+
 ```powershell
 curl http://localhost:4000/api/dashboard
 ```
+
 Retourne : stats (4 médicaments, 2 expirant, 1 en rupture), alertes, mouvements récents
 
 #### 2. Inventaire (médicaments)
+
 ```powershell
 curl http://localhost:4000/api/inventory?search=&status=ok
 ```
+
 Retourne : liste des médicaments avec filtres
 
 #### 3. Profils (famille)
+
 ```powershell
 curl http://localhost:4000/api/profiles
 ```
+
 Retourne : Danil, Slim, Mamie Jeanne, Claire
 
 #### 4. Historique (mouvements)
+
 ```powershell
 curl http://localhost:4000/api/history
 ```
+
 Retourne : 4 entrées d'historique (dates, types, quantités)
 
 #### 5. Statut du modèle local
+
 ```powershell
 curl http://localhost:4000/api/chat/status
 ```
+
 Retourne : disponibilité du modèle local (`available`), provider actif (`ollama` / `llama_cpp`), modèle et raison éventuelle d indisponibilité
 
 #### 6. Chat (Assistant IA local)
+
 ```powershell
 curl -X POST http://localhost:4000/api/chat `
   -H "Content-Type: application/json" `
@@ -212,7 +231,7 @@ Retourne : réponse générée localement + disclaimer de sécurité
 ## ✅ Checklist de Test Complet
 
 - [ ] Backend démarre sans erreur  
-- [ ] Frontend chargé sur http://127.0.0.1:5173  
+- [ ] Frontend chargé sur `http://127.0.0.1:5173`  
 - [ ] `/api/health` retourne `{"status":"ok"}`  
 - [ ] Dashboard affiche 4 médicaments + alertes  
 - [ ] Inventaire affiche les 4 médicaments filtrables  
@@ -225,6 +244,7 @@ Retourne : réponse générée localement + disclaimer de sécurité
 ## 🧪 Recette Sprint 6 (repro steps + cas limites)
 
 Objectif:
+
 - Valider la stabilite front/back en conditions reelles.
 - Reproduire rapidement les cas limites critiques.
 
@@ -232,36 +252,36 @@ Objectif:
 
 1. Ouvrir `http://127.0.0.1:5173`.
 2. Verifier navigation desktop:
-  - Dashboard -> Inventaire -> Profils -> Historique -> Notifications -> Assistant.
+   - Dashboard -> Inventaire -> Profils -> Historique -> Notifications -> Assistant.
 3. Verifier recherche globale:
-  - Saisir une requete dans la barre superieure.
-  - Verifier 3 sections de resultats (Inventaire, Profils, Historique).
-  - Appliquer les filtres (categorie, statut inventaire, type mouvement).
+   - Saisir une requete dans la barre superieure.
+   - Verifier 3 sections de resultats (Inventaire, Profils, Historique).
+   - Appliquer les filtres (categorie, statut inventaire, type mouvement).
 4. Verifier parcours mobile:
-  - Ouvrir les DevTools navigateur et simuler 375x812, 390x844 et 768x1024.
-  - Verifier presence de la bottom nav et absence de chevauchement des formulaires/modales.
+   - Ouvrir les DevTools navigateur et simuler 375x812, 390x844 et 768x1024.
+   - Verifier presence de la bottom nav et absence de chevauchement des formulaires/modales.
 5. Verifier operations metier:
-  - Ajouter/modifier/supprimer un medicament.
-  - Enregistrer une prise puis un ajout de stock.
-  - Verifier impact dans Historique et Dashboard.
+   - Ajouter/modifier/supprimer un medicament.
+   - Enregistrer une prise puis un ajout de stock.
+   - Verifier impact dans Historique et Dashboard.
 
 ### Cas limites a tester
 
 1. Recherche vide:
-  - Vider le champ de recherche globale.
-  - Resultat attendu: panneau de resultats ferme, aucune erreur UI.
+   - Vider le champ de recherche globale.
+   - Resultat attendu: panneau de resultats ferme, aucune erreur UI.
 2. Filtre sans resultat:
-  - Requete + filtre strict (ex: categorie Profil + mot inexistant).
-  - Resultat attendu: sections avec "Aucun resultat" sans crash.
+   - Requete + filtre strict (ex: categorie Profil + mot inexistant).
+   - Resultat attendu: sections avec "Aucun resultat" sans crash.
 3. Backend indisponible:
-  - Arreter le backend puis rafraichir le front.
-  - Resultat attendu: messages d erreur explicites, UI reste utilisable.
+   - Arreter le backend puis rafraichir le front.
+   - Resultat attendu: messages d erreur explicites, UI reste utilisable.
 4. Charge IA concurrente:
-  - Envoyer plusieurs requetes chat simultanees.
-  - Resultat attendu: certaines reponses peuvent retourner `503 RESOURCE_EXHAUSTED`, sans blocage serveur.
+   - Envoyer plusieurs requetes chat simultanees.
+   - Resultat attendu: certaines reponses peuvent retourner `503 RESOURCE_EXHAUSTED`, sans blocage serveur.
 5. Modele IA absent:
-  - Arreter Ollama/llama.cpp puis appeler `/api/chat/status`.
-  - Resultat attendu: `available=false` + raison detaillee.
+   - Arreter Ollama/llama.cpp puis appeler `/api/chat/status`.
+   - Resultat attendu: `available=false` + raison detaillee.
 
 ---
 
@@ -289,6 +309,7 @@ node scripts/load-endpoints.mjs --duration=30 --concurrency=8 --include-chat
 ```
 
 Critere de validation Sprint 6:
+
 - 0 timeout reseau.
 - 0 erreur transport.
 - Endpoint reste joignable sous charge locale.
@@ -300,6 +321,7 @@ Critere de validation Sprint 6:
 **Localisation :** `backend/data/medistock.db` (SQLite local)
 
 **Schéma :**
+
 - `profiles` - 4 entrées (Danil, Slim, Mamie Jeanne, Claire)
 - `medicines` - 4 entrées (Metformine, Amoxicilline, Levothyroxine, Ibuprofène)
 - `stock_items` - 4 entrées (stock et dates d'expiration)
@@ -403,6 +425,7 @@ PHARMACIE/
 ## 💬 Support
 
 En cas de problème :
+
 1. Vérifier les logs terminal (erreurs TypeScript, port en conflit)
 2. Vérifier que Node.js >= 24.0
 3. Réinstaller les dépendances (`npm install`)

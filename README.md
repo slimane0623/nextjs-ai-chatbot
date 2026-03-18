@@ -8,10 +8,12 @@ Source: DossierDeConceptionPHASE1.pdf
 ## 1) Objectif du projet
 
 Concevoir une application de gestion de stock de pharmacie familiale, avec:
+
 - Un moteur de gestion (Core) fiable pour les calculs de stock
 - Un assistant IA local pour la saisie en langage naturel et la vulgarisation
 
 Contraintes fondamentales:
+
 - Confidentialite totale: aucune donnee de sante envoyee a des serveurs tiers
 - Separation stricte Core/IA: l IA ne modifie pas les calculs critiques d inventaire
 - Temps de reponse:
@@ -51,6 +53,7 @@ Contraintes fondamentales:
 ## 4) Fonctionnalites obligatoires (cahier des charges)
 
 ### Dashboard
+
 - 4 cartes: total medicaments, stock critique, proche peremption, rupture
 - Graphique barres des niveaux de stock
 - Liste alertes actives (severite couleur)
@@ -58,6 +61,7 @@ Contraintes fondamentales:
 - Acces rapide profils familiaux
 
 ### Inventaire et gestion du stock
+
 - Grille visuelle + niveau de stock
 - Recherche textuelle
 - Filtres: critique, proche peremption, rupture
@@ -66,21 +70,25 @@ Contraintes fondamentales:
 - Actions rapides: enregistrer prise, ajouter stock
 
 ### Profils familiaux
+
 - Types: Gestionnaire principal, Patient chronique, Senior, Aidant familial
 - Fiche detaillee par profil
 - Formulaire: type, nom, date de naissance, allergies, notes
 
 ### Historique des mouvements
+
 - Timeline chronologique par jour
 - Filtres par type de mouvement et profil
 - Statistiques mensuelles
 
 ### Navigation et interface
+
 - Sidebar desktop
 - Bottom nav mobile
 - Barre superieure: recherche globale, notifications, avatar
 
 ### Fonctionnalite IA
+
 - Chat integre
 - Bulles conversation utilisateur/assistant
 - Suggestions rapides cliquables
@@ -93,12 +101,14 @@ Contraintes fondamentales:
 ## 5) Donnees a stocker (minimum)
 
 Entites:
+
 - Profil/Beneficiaire
 - Fiche Medicament
 - Stock/Boite
 - Evenement/Historique
 
 Relations logiques:
+
 - Un Profil peut avoir 0..n boites
 - Une Fiche Medicament peut avoir 0..n boites
 - Une Boite peut avoir 0..n evenements
@@ -109,6 +119,7 @@ Relations logiques:
 ## 6) Distribution des taches (Danil et Slim)
 
 ### Sprint 0 - Initialisation et architecture
+
 - Danil (Frontend React):
   - Initialiser application React
   - Structure navigation (Dashboard, Inventaire, Profils, Historique, Chat)
@@ -119,6 +130,7 @@ Relations logiques:
   - Mettre en place structure Core/Modules
 
 ### Sprint 1 - Base de donnees + CRUD + roles
+
 - Danil:
   - Ecrans CRUD profils
   - Ecrans CRUD inventaire (liste + ajout)
@@ -128,6 +140,7 @@ Relations logiques:
   - Gestion des roles/profils familiaux
 
 ### Sprint 2 - Inventaire complet + profils
+
 - Danil:
   - Recherche + filtres inventaire
   - Fiche detaillee + actions rapides (prise/ajout stock)
@@ -137,6 +150,7 @@ Relations logiques:
   - API filtres et historique
 
 ### Sprint 3 - IA locale et chat
+
 - Danil:
   - Interface chat complete (bulles, suggestions, typing)
 - Slim:
@@ -145,9 +159,11 @@ Relations logiques:
   - Disclaimers de securite sur reponses IA
 
 Livrable minimum Sprint 3:
+
 - Application fonctionnelle et utilisable en conditions reelles
 
 ### Sprint 4 - Dashboard + notifications + historique
+
 - Danil:
   - Dashboard complet (cartes, graphique, alertes)
   - Page historique timeline
@@ -156,6 +172,7 @@ Livrable minimum Sprint 3:
   - Systeme notifications
 
 ### Sprint 5 - Responsive avance + recherche globale
+
 - Danil:
   - Optimisation mobile (bottom nav, grilles)
 - Slim:
@@ -163,6 +180,7 @@ Livrable minimum Sprint 3:
   - Optimisation performances backend
 
 ### Sprint 6 - Tests charge + optimisation IA + documentation
+
 - Danil:
   - Ajustements UI finaux
   - Documentation front
@@ -175,11 +193,13 @@ Livrable minimum Sprint 3:
 ## 6.1) Mode de travail recommande (feature verticale)
 
 Principe:
+
 - Chaque personne prend une feature complete: Frontend + Backend lies
 - Une PR n est complete que si UI + API + test manuel sont livres ensemble
 - Base de travail sprint: `sprint-X-...`, puis branches feature dediees
 
 Template de branche:
+
 - `feat/sX-nom-feature-danil`
 - `feat/sX-nom-feature-slim`
 
@@ -187,7 +207,8 @@ Template de branche:
 
 ## 6.2) Repartition verticale Sprint 1 -> Sprint 6
 
-### Sprint 1 - Base de donnees + CRUD + roles
+### Sprint 1 - Feature profils et inventaire
+
 - Danil (feature: profils CRUD)
   - Front: ecrans profils (liste, creation, edition, suppression)
   - Back: endpoints `GET/POST/PUT/DELETE /api/profiles` connectes a SQLite
@@ -197,7 +218,8 @@ Template de branche:
   - Back: endpoints `GET/POST/PUT/DELETE /api/inventory` + validation Zod
   - Definition of done: ajout/modification inventaire visible en UI et persiste en DB
 
-### Sprint 2 - Inventaire complet + profils
+### Sprint 2 - Feature inventaire et alertes
+
 - Danil (feature: inventaire actions rapides)
   - Front: ecran inventaire (recherche, filtres, fiche detaillee)
   - Back: endpoint prise/ajout stock + validation payload
@@ -207,7 +229,8 @@ Template de branche:
   - Back: regles alertes (critique/peremption) + API historique filtree
   - Definition of done: alertes coherentes dashboard/inventaire + historique filtre
 
-### Sprint 3 - IA locale et chat
+### Sprint 3 - Feature chat et moteur IA
+
 - Danil (feature: UX chat)
   - Front: bulles, suggestions, typing indicator, erreurs/retry
   - Back: contrat API chat (schema request/response) + gestion timeout
@@ -217,7 +240,8 @@ Template de branche:
   - Back: integration Ollama/Llama.cpp + endpoint NLP + disclaimers
   - Definition of done: question utilisateur -> reponse locale avec disclaimer
 
-### Sprint 4 - Dashboard + notifications + historique
+### Sprint 4 - Feature dashboard et notifications
+
 - Danil (feature: dashboard analytique)
   - Front: cartes KPI, graphiques, liste alertes actives, timeline recente
   - Back: endpoint dashboard agrege (stats + alertes + mouvements)
@@ -227,7 +251,8 @@ Template de branche:
   - Back: generation notifications metier + marquage lues
   - Definition of done: chaque evenement critique cree une notification tracable
 
-### Sprint 5 - Responsive avance + recherche globale
+### Sprint 5 - Feature mobile et recherche globale
+
 - Danil (feature: mobile first)
   - Front: optimisation mobile (bottom nav, grilles, modal/form)
   - Back: adaptations mineures API pour pagination/tri si necessaire
@@ -237,7 +262,8 @@ Template de branche:
   - Back: endpoint recherche combinee + filtres croises
   - Definition of done: une requete renvoie des resultats classes par categorie
 
-### Sprint 6 - Stabilisation finale
+### Sprint 6 - Feature stabilisation et documentation
+
 - Danil (feature: qualite front)
   - Front: correction UX, etats de chargement/erreur, coherence visuelle finale
   - Back: verif integration front/back sur tous les ecrans
@@ -248,6 +274,7 @@ Template de branche:
   - Definition of done: doc runnable + endpoints stables en test charge local
 
 ---
+
 ## 7) Risques et mitigations (cahier des charges)
 
 - R1 Performance LLM locale insuffisante (impact eleve)
@@ -277,6 +304,7 @@ Template de branche:
 ## 9) Realisation Sprint 6 (Slim - qualite back + doc)
 
 Livrables implementes:
+
 - Front (support recette): procedure de repro + cas limites ajoutes dans `SETUP.md` (section "Recette Sprint 6").
 - Back (optimisation endpoint IA):
   - limite de requetes IA simultanees (`CHAT_MAX_CONCURRENT`)
@@ -287,5 +315,6 @@ Livrables implementes:
   - script `backend/scripts/load-endpoints.mjs`
 
 Definition of done couverte:
+
 - Documentation runnable: oui (commandes et procedure explicites dans `SETUP.md`).
 - Endpoints stables en test charge local: oui (validation par script de charge local, seuils de stabilite documentes).
