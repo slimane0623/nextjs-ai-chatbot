@@ -518,7 +518,7 @@ function Layout() {
           <div>
             <p className="eyebrow">Prototype de travail</p>
             <h2>{pageTitle}</h2>
-            <p className="muted">5 mars 2026</p>
+            <p className="muted">{new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
           <div className="topbar-actions topbar-actions-search">
             <form
@@ -790,6 +790,30 @@ function DashboardPage() {
 
   const movementTypeLabel: Record<string, string> = { prise: 'Prise', ajout: 'Ajout', alerte: 'Alerte' }
 
+  if (loading) {
+    return (
+      <section className="page-grid">
+        <article className="card loading-card">
+          <div className="loading-indicator">
+            <span className="spinner" />
+            <p>Chargement du tableau de bord...</p>
+          </div>
+        </article>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className="page-grid">
+        <article className="card error-card">
+          <p className="error-text">{error}</p>
+          <button className="primary-button" type="button" onClick={() => globalThis.location.reload()}>Recharger la page</button>
+        </article>
+      </section>
+    )
+  }
+
   return (
     <section className="page-grid">
       <div className="stats-grid">
@@ -885,7 +909,7 @@ function DashboardPage() {
                 </div>
               </div>
             ))}
-            {!loading && activeAlerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
+            {activeAlerts.length === 0 ? <p className="muted">Aucune alerte active.</p> : null}
           </div>
         </article>
 
@@ -906,7 +930,7 @@ function DashboardPage() {
                 <span className="pill">{profile.medicines} med.</span>
               </div>
             ))}
-            {!loading && dashboardProfiles.length === 0 ? <p className="muted">Aucun profil disponible.</p> : null}
+            {dashboardProfiles.length === 0 ? <p className="muted">Aucun profil disponible.</p> : null}
           </div>
         </article>
       </div>
@@ -951,7 +975,6 @@ function DashboardPage() {
         ) : !loading ? (
           <p className="muted">Aucun mouvement recent.</p>
         ) : null}
-        {error ? <p className="error-text">{error}</p> : null}
       </article>
     </section>
   )
@@ -1210,7 +1233,12 @@ function InventoryPage() {
           </select>
         </div>
 
-        {loading ? <p>Chargement de l inventaire...</p> : null}
+        {loading ? (
+          <div className="loading-indicator">
+            <span className="spinner" />
+            <p>Chargement de l inventaire...</p>
+          </div>
+        ) : null}
         {error ? <p className="error-text">{error}</p> : null}
 
         <div className="inventory-grid">
@@ -1235,6 +1263,7 @@ function InventoryPage() {
               </button>
             )
           })}
+          {!loading && items.length === 0 ? <p className="muted empty-state">Aucun medicament trouve. Ajoutez-en un ou modifiez vos filtres.</p> : null}
         </div>
       </article>
 
@@ -1528,6 +1557,8 @@ function ProfilesPage() {
           </div>
         </div>
 
+        {error ? <p className="error-text">{error}</p> : null}
+
         <form className="profile-form" onSubmit={handleSubmit}>
           <label className="field-stack" htmlFor="profile-name">
             <span>Nom</span>
@@ -1605,7 +1636,6 @@ function ProfilesPage() {
             ) : null}
           </div>
         </form>
-        {error ? <p className="error-text">{error}</p> : null}
       </article>
 
       <article className="card">
@@ -1619,7 +1649,12 @@ function ProfilesPage() {
           </button>
         </div>
 
-        {loading ? <p>Chargement des beneficiaires...</p> : null}
+        {loading ? (
+          <div className="loading-indicator">
+            <span className="spinner" />
+            <p>Chargement des beneficiaires...</p>
+          </div>
+        ) : null}
 
         <div className="stack-list">
           {profileRows.map((profile) => (
@@ -1655,12 +1690,14 @@ function HistoryPage() {
   const [historyRows, setHistoryRows] = useState<Movement[]>([])
   const [profileOptions, setProfileOptions] = useState<Array<{ id: number, name: string }>>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
 
     async function loadHistory() {
       setLoading(true)
+      setError(null)
 
       try {
         const [rows, profileRows] = await Promise.all([
@@ -1671,6 +1708,10 @@ function HistoryPage() {
         if (mounted) {
           setHistoryRows(rows.map(mapMovement))
           setProfileOptions(profileRows.map((p) => ({ id: p.id, name: p.name })))
+        }
+      } catch {
+        if (mounted) {
+          setError('Impossible de charger l historique. Verifie que le backend tourne sur le port 4000.')
         }
       } finally {
         if (mounted) {
@@ -1727,8 +1768,16 @@ function HistoryPage() {
           </select>
         </div>
 
+        {error ? <p className="error-text">{error}</p> : null}
+
         <div className="stack-list">
-          {loading ? <p>Chargement de l historique...</p> : null}
+          {loading ? (
+            <div className="loading-indicator">
+              <span className="spinner" />
+              <p>Chargement de l historique...</p>
+            </div>
+          ) : null}
+          {!loading && filteredMovements.length === 0 ? <p className="muted empty-state">Aucun mouvement trouve pour ces filtres.</p> : null}
           {filteredMovements.map((movement) => (
             <div key={movement.id} className="movement-row movement-row-large">
               <div>
@@ -1858,7 +1907,12 @@ function NotificationsPage({ onNotificationsUpdated }: { onNotificationsUpdated:
           </div>
         </div>
 
-        {loading ? <p>Chargement des notifications...</p> : null}
+        {loading ? (
+          <div className="loading-indicator">
+            <span className="spinner" />
+            <p>Chargement des notifications...</p>
+          </div>
+        ) : null}
 
         <div className="stack-list">
           {unreadNotifications.map((notification) => (
